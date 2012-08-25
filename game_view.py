@@ -3,6 +3,7 @@ import random,numpy
 
 import ui,globals,drawing
 from globals.types import Point
+import Box2D as box2d
 
 class Viewpos(object):
     def __init__(self,point):
@@ -62,7 +63,7 @@ class Intro(object):
     def __init__(self,parent):
         self.stage  = IntroStages.STARTED
         self.parent = parent
-        bl = Point(0,1)
+        bl = Point(5,1)
         self.letter_duration = 20
         self.start = None
         self.menu_text = ui.TextBox(parent   = parent,
@@ -110,7 +111,7 @@ class Intro(object):
             num_enabled = int(self.elapsed/self.letter_duration)
             self.menu_text.EnableChars(num_enabled)
         elif self.continued:
-            self.parent.viewpos.SetTarget(Point(0,0),t,rate = 0.4)
+            self.parent.viewpos.SetTarget(Point(self.parent.viewpos.pos.x,0),t,rate = 0.4)
             return IntroStages.SCROLL
         return IntroStages.TEXT
 
@@ -122,19 +123,26 @@ class Intro(object):
         else:
             return IntroStages.SCROLL
 
+class Physics(object):
+    def __init__(self):
+        self.worldAABB=box2d.b2AABB()
+        self.worldAABB.lowerBound.Set(-100, -100)
+        self.worldAABB.upperBound.Set(100, 100)
+
+
 
 class GameView(ui.RootElement):
-    
     def __init__(self):
         super(GameView,self).__init__(Point(0,0),globals.screen)
         self.texture = drawing.texture.Texture('starfield.png')
         self.uielements = {}
-        self.backdrop   = drawing.Quad(globals.quad_buffer,tc = drawing.constants.full_tc)
+        self.backdrop   = drawing.Quad(globals.quad_buffer,tc = numpy.array([(0,0),(0,1),(5,1),(5,0)]))
         self.backdrop.SetVertices(Point(0,0),
-                                  globals.screen*2,
+                                  Point(globals.screen.x*10,globals.screen.y*2),
                                   drawing.constants.DrawLevels.grid)
-        self.viewpos = Viewpos(Point(0,globals.screen.y))
+        self.viewpos = Viewpos(Point(globals.screen.x*5,globals.screen.y))
         self.t = None
+        self.physics = Physics()
         
         self.mode = Intro(self)
 
