@@ -187,11 +187,33 @@ class Intro(Mode):
 #        else:
 #            return IntroStages.SCROLL
 
+
+class MyContactListener(box2d.b2ContactListener):
+    physics = None
+    def __init__(self): 
+        super(MyContactListener, self).__init__() 
+    def Add(self, point):
+        """Handle add point"""
+        print 'a',dir(point.shape1)
+    def Persist(self, point):
+        """Handle persist point"""
+        #print 'b',point.shape1
+        pass
+    def Remove(self, point):
+        """Handle remove point"""
+        #print 'c',point
+        pass
+    def Result(self, point):
+        """Handle results"""
+        #print 'd',point
+        pass
+
         
 
 class Physics(object):
     scale_factor = 0.1
     def __init__(self,parent):
+        self.contact_listener = MyContactListener()
         self.parent = parent
         self.worldAABB=box2d.b2AABB()
         self.worldAABB.lowerBound = (-100,-globals.screen.y-100)
@@ -199,6 +221,7 @@ class Physics(object):
         self.gravity = (0,-10)
         self.doSleep = True
         self.world = box2d.b2World(self.worldAABB, self.gravity, self.doSleep)
+        self.world.SetContactListener(self.contact_listener)
         self.timeStep = 1.0 / 60.0
         self.velocityIterations = 10
         self.positionIterations = 8
@@ -208,7 +231,11 @@ class Physics(object):
         self.objects.append(obj)
 
     def Step(self):
+        self.contacts = []
         self.world.Step(self.timeStep, self.velocityIterations, self.positionIterations)
+        for contact in self.contacts:
+            #print contact
+            pass
         for obj in self.objects:
             obj.Update()
 
@@ -216,6 +243,7 @@ class Keys(object):
     UP    = 1
     LEFT  = 2
     RIGHT = 4
+    ALL   = UP | LEFT | RIGHT
 
 class GameMode(Mode):
     def __init__(self,parent):
@@ -251,7 +279,7 @@ class GameMode(Mode):
         #if key in [13,27,32]: #return, escape, space
         if key in self.up_keys:
             #Apply force to the ship
-            self.thrust = 700
+            self.thrust = 2100
             self.all_time_key_mask |= Keys.UP
             self.key_mask          |= Keys.UP
         if key in self.left_keys:
@@ -277,7 +305,7 @@ class GameMode(Mode):
         return False,False
 
     def TutorialMovement(self,t):
-        if self.all_time_key_mask == 7:
+        if self.all_time_key_mask == Keys.ALL:
             self.parent.ship.SetText('Aim with the mouse and left click to shoot',wait=0)
             self.parent.ship.state = ShipStates.TUTORIAL_SHOOTING
 
