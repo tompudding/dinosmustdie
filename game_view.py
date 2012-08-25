@@ -1,7 +1,7 @@
 from OpenGL.GL import *
 import random,numpy
 
-import ui,globals,drawing
+import ui,globals,drawing,os
 from globals.types import Point
 import Box2D as box2d
 
@@ -125,8 +125,9 @@ class Intro(object):
             return IntroStages.SCROLL
 
 class StaticBox(object):
-    def __init__(self,physics,bl,tr):
+    def __init__(self,physics,bl,tr,atlas):
         self.quad = drawing.Quad(globals.quad_buffer,tc = drawing.constants.full_tc)
+        self.quad.SetTextureCoordinates(atlas.TextureCoords(os.path.join(globals.dirs.sprites,'box.png')))
         self.physics = physics
         self.bodydef = box2d.b2BodyDef()
         midpoint = (tr - bl)*0.5*physics.scale_factor
@@ -137,12 +138,7 @@ class StaticBox(object):
         self.shape.density = 1
         self.shape.friction = 0.3
         self.body.CreateShape(self.shape)
-
-class DynamicBox(StaticBox):
-    def __init__(self,physics,bl,tr):
-        super(DynamicBox,self).__init__(physics,bl,tr)
-        self.body.SetMassFromShapes()
-        physics.AddObject(self)
+        self.Update()
 
     def Update(self):
         #Just set the vertices
@@ -151,6 +147,14 @@ class DynamicBox(StaticBox):
         #print bl,tr
         #print self.body.position
         self.quad.SetVertices(bl,tr,10)
+
+
+class DynamicBox(StaticBox):
+    def __init__(self,physics,bl,tr,atlas):
+        super(DynamicBox,self).__init__(physics,bl,tr,atlas)
+        self.body.SetMassFromShapes()
+        physics.AddObject(self)
+
         
 
 class Physics(object):
@@ -179,9 +183,13 @@ class Physics(object):
 class GameView(ui.RootElement):
     def __init__(self):
         super(GameView,self).__init__(Point(0,0),Point(globals.screen.x*10,globals.screen.y*2))
-        self.texture = drawing.texture.Texture('starfield.png')
+        self.atlas = drawing.texture.TextureAtlas('tiles_atlas_0.png','tiles_atlas.txt')
         self.uielements = {}
-        self.backdrop   = drawing.Quad(globals.quad_buffer,tc = numpy.array([(0,0),(0,1),(5,1),(5,0)]))
+        #backdrop_tc = [[0,0],[0,1],[5,1],[5,0]]
+        #self.atlas.TransformCoords('starfield.png',backdrop_tc) 
+        #self.backdrop   = drawing.Quad(globals.quad_buffer,tc = backdrop_tc)
+        self.backdrop_texture = drawing.texture.Texture('starfield.png')
+        self.backdrop  = drawing.Quad(globals.backdrop_buffer,tc = numpy.array([(0,0),(0,1),(5,1),(5,0)]))
         self.backdrop.SetVertices(Point(0,0),
                                   self.absolute.size,
                                   drawing.constants.DrawLevels.grid)
@@ -190,10 +198,12 @@ class GameView(ui.RootElement):
         self.physics = Physics(self)
         self.floor = StaticBox(self.physics,
                                bl = Point(0,0),
-                               tr = Point(self.absolute.size.x,50))
+                               tr = Point(self.absolute.size.x,50),
+                               atlas = self.atlas)
         self.box   = DynamicBox(self.physics,
                                 bl = Point(self.absolute.size.x*0.55,1200),
-                                tr = Point(self.absolute.size.x*0.55+50,1250))
+                                tr = Point(self.absolute.size.x*0.55+50,1250),
+                                atlas = self.atlas)
         
         self.mode = Intro(self)
 
@@ -218,9 +228,16 @@ class GameView(ui.RootElement):
         glEnableClientState(GL_TEXTURE_COORD_ARRAY)
         
 
-        #Draw the world...
-        glBindTexture(GL_TEXTURE_2D, self.texture.texture)
+        #Draw the world backdrop...
+        glBindTexture(GL_TEXTURE_2D, self.backdrop_texture.texture)
         glTranslatef(-self.viewpos.pos.x,-self.viewpos.pos.y,0)
+        glVertexPointerf(globals.backdrop_buffer.vertex_data)
+        glTexCoordPointerf(globals.backdrop_buffer.tc_data)
+        glColorPointer(4,GL_FLOAT,0,globals.backdrop_buffer.colour_data)
+        glDrawElements(GL_QUADS,4,GL_UNSIGNED_INT,globals.backdrop_buffer.indices)
+        
+        #Draw the world items
+        glBindTexture(GL_TEXTURE_2D, self.atlas.texture.texture)
         glVertexPointerf(globals.quad_buffer.vertex_data)
         glTexCoordPointerf(globals.quad_buffer.tc_data)
         glColorPointer(4,GL_FLOAT,0,globals.quad_buffer.colour_data)
