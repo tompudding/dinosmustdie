@@ -58,7 +58,24 @@ class IntroStages(object):
 
 gloop_name = 'Mar Might'
 
-class Intro(object):
+class Mode(object):
+    """ Abstract base class to represent game modes """
+    def __init__(self,parent):
+        self.parent = parent
+    
+    def KeyDown(self,key):
+        pass
+    
+    def KeyUp(self,key):
+        pass
+
+    def MouseButtonDown(self,key):
+        return False,False
+
+    def Update(self,t):
+        pass
+
+class Intro(Mode):
     text = "The universe runs on a gloopy black yeast extract known as {gloop}. Farming it is difficult, but scientists postulate that a hypothetical species known as humans may be the only creature in the universe able to withstand {gloop}'s addictiveness enough to create it on an industrial scale.\n\n  Level 1 - Create 10 kilotons of {gloop}\n     Subgoal 1 - Use primordial ooze to evolve the disgusting species \"Humans\"\n\n\n                   Press any key to continue".format(gloop = gloop_name)
     def __init__(self,parent):
         self.stage  = IntroStages.STARTED
@@ -100,8 +117,8 @@ class Intro(object):
         self.elapsed = t - self.start
         self.stage = self.handlers[self.stage](t)
         if self.stage == IntroStages.COMPLETE:
-            #self.parent.mode = GameMode(self.parent)
-            self.parent.mode = None
+            self.parent.mode = GameMode(self.parent)
+            #self.parent.mode = None
 
     def Startup(self,t):
         self.menu_text.EnableChars(0)
@@ -113,16 +130,16 @@ class Intro(object):
             self.menu_text.EnableChars(num_enabled)
         elif self.continued:
             self.parent.viewpos.SetTarget(Point(self.parent.viewpos.pos.x,0),t,rate = 0.4)
-            return IntroStages.SCROLL
+            return IntroStages.COMPLETE
         return IntroStages.TEXT
-
     
     def Scroll(self,t):
-        if not self.parent.viewpos.HasTarget():
-            self.menu_text.Disable()
-            return IntroStages.COMPLETE
-        else:
-            return IntroStages.SCROLL
+        pass
+#        if not self.parent.viewpos.HasTarget():
+#            self.menu_text.Disable()
+#            return IntroStages.COMPLETE
+#        else:
+#            return IntroStages.SCROLL
 
 class StaticBox(object):
     def __init__(self,physics,bl,tr,atlas):
@@ -179,6 +196,29 @@ class Physics(object):
         self.world.Step(self.timeStep, self.velocityIterations, self.positionIterations)
         for obj in self.objects:
             obj.Update()
+
+class GameMode(Mode):
+    def __init__(self,parent):
+        self.parent = parent
+        self.thrust = None
+        
+    def KeyDown(self,key):
+        #if key in [13,27,32]: #return, escape, space
+        if key == 32:
+            #Apply force to the ship
+            self.thrust = (0,1000)
+
+    def KeyUp(self,key):
+        if key == 32:
+            self.thrust = None
+
+    def MouseButtonDown(self,pos,button):
+        return False,False
+
+    def Update(self,t):
+        if self.thrust:
+            self.parent.box.body.ApplyForce(self.thrust,self.parent.box.body.position)
+        pass
 
 class GameView(ui.RootElement):
     def __init__(self):
@@ -253,6 +293,9 @@ class GameView(ui.RootElement):
         
     def KeyDown(self,key):
         self.mode.KeyDown(key)
+
+    def KeyUp(self,key):
+        self.mode.KeyUp(key)
 
     def MouseButtonDown(self,pos,button):
         print self.viewpos.pos + pos

@@ -24,7 +24,7 @@ def Init():
     pygame.init()
     screen = pygame.display.set_mode((w,h),pygame.OPENGL|pygame.DOUBLEBUF)
     glClearColor(0.0, 0.0, 0.0, 1.0)
-    pygame.display.set_caption('Dinos must Die!')
+    pygame.display.set_caption('Dinosaurs must Die!')
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
     glMatrixMode(GL_PROJECTION)
@@ -75,6 +75,8 @@ def main():
                 break
             elif (event.type == pygame.KEYDOWN):
                 globals.current_view.KeyDown(event.key)
+            elif (event.type == pygame.KEYUP):
+                globals.current_view.KeyUp(event.key)
             else:
                 try:
                     pos = Point(event.pos[0],globals.screen[1]-event.pos[1])
