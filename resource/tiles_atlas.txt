@@ -1,1 +1,2 @@
-resource/sprites/box.png:resource/tiles_atlas_0.png:0:480.0:32:32
+resource/sprites/dirt.png:resource/tiles_atlas_0.png:0:480.0:32:32
+resource/sprites/ship.png:resource/tiles_atlas_0.png:32:480.0:32:32

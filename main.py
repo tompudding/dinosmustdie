@@ -19,6 +19,7 @@ def Init():
     globals.backdrop_buffer       = drawing.QuadBuffer(8)
     globals.colour_tiles          = drawing.QuadBuffer(131072)
     globals.mouse_relative_buffer = drawing.QuadBuffer(1024)
+    globals.ground_buffer         = drawing.TriangleBuffer(131072)
 
     globals.dirs = globals.types.Directories('resource')
     pygame.init()

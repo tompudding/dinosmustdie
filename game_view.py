@@ -183,9 +183,11 @@ class Intro(Mode):
 #            return IntroStages.SCROLL
 
 class StaticBox(object):
-    def __init__(self,physics,bl,tr,atlas):
-        self.quad = drawing.Quad(globals.quad_buffer,tc = drawing.constants.full_tc)
-        self.quad.SetTextureCoordinates(atlas.TextureCoords(os.path.join(globals.dirs.sprites,'box.png')))
+    def __init__(self,physics,bl,tr,tc,buffer = None):
+        if buffer == None:
+            buffer = globals.quad_buffer
+        #Hardcode the dirt texture since right now all static things are dirt. I know I know.
+        self.InitPolygons(tc)
         self.physics = physics
         self.bodydef = box2d.b2BodyDef()
         midpoint = (tr - bl)*0.5*physics.scale_factor
@@ -197,6 +199,28 @@ class StaticBox(object):
         self.shape.friction = 1.5
         self.body.CreateShape(self.shape)
         self.Update()
+
+    def InitPolygons(self,tc):
+        self.triangle1 = drawing.Triangle(globals.ground_buffer,None,tc[:3])
+        self.triangle2 = drawing.Triangle(globals.ground_buffer,tc = tc[2:] + [tc[0]])
+        self.triangles = self.triangle1,self.triangle2
+
+    def GetPos(self):
+        return Point(*self.body.position)/self.physics.scale_factor
+
+    def Update(self):
+        pass
+
+class DynamicBox(StaticBox):
+    def __init__(self,physics,bl,tr,tc):
+        super(DynamicBox,self).__init__(physics,bl,tr,tc)
+
+        self.body.SetMassFromShapes()
+        physics.AddObject(self)
+
+    def InitPolygons(self,tc):
+        self.quad = drawing.Quad(globals.quad_buffer,tc = tc)
+
 
     def Update(self):
         #Just set the vertices
@@ -212,15 +236,6 @@ class StaticBox(object):
         #print self.body.position
         #self.quad.SetVertices(bl,tr,10)
 
-    def GetPos(self):
-        return Point(*self.body.position)/self.physics.scale_factor
-
-
-class DynamicBox(StaticBox):
-    def __init__(self,physics,bl,tr,atlas):
-        super(DynamicBox,self).__init__(physics,bl,tr,atlas)
-        self.body.SetMassFromShapes()
-        physics.AddObject(self)
         
 
 class Physics(object):
@@ -300,14 +315,36 @@ class GameView(ui.RootElement):
         self.viewpos = Viewpos(Point(globals.screen.x*5,globals.screen.y))
         self.t = None
         self.physics = Physics(self)
+        dirt_tc = [[0,0],[0,2],[50,2],[50,0]]
+        self.atlas.TransformCoords(os.path.join(globals.dirs.sprites,'dirt.png'),dirt_tc)
+        print dirt_tc
         self.floor = StaticBox(self.physics,
                                bl = Point(0,0),
                                tr = Point(self.absolute.size.x,50),
-                               atlas = self.atlas)
+                               tc = dirt_tc)
         self.ship   = DynamicBox(self.physics,
                                 bl = Point(self.absolute.size.x*0.55,100),
                                 tr = Point(self.absolute.size.x*0.55+50,150),
-                                atlas = self.atlas)
+                                tc = self.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'ship.png')))
+
+        self.land_heights = [(0,50)]
+        pos,height = self.land_heights[0]
+        while pos < self.absolute.size.x:
+            y_diff  = random.normalvariate(50,20)
+            x_diff  = random.random()*50
+            pos    += x_diff
+            height += y_diff
+            self.land_heights.append( (pos,height) )
+
+        #Now create a triangle and a quad for each land point
+        for i in xrange(1,len(self.land_heights)):
+            pos,height = self.land_heights[i-1]
+            next_pos,next_height = self.land_heights[i]
+            
+
+        print self.land_heights
+        #raise SystemExit
+            
         
         self.mode = Intro(self)
 
