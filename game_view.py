@@ -357,10 +357,10 @@ class GameView(ui.RootElement):
         dirt_y = (globals.screen.y+50)/(self.ground_texture.height*2.0)
         dirt_tc = [[0,0],[0,dirt_y],[dirt_x,dirt_y],[dirt_x,0]]
         print dirt_tc
-        self.floor = StaticBox(self.physics,
-                               bl = Point(0,-globals.screen.y),
-                               tr = Point(self.absolute.size.x,50),
-                               tc = dirt_tc)
+        #self.floor = StaticBox(self.physics,
+        #                       bl = Point(0,-globals.screen.y),
+        #                       tr = Point(self.absolute.size.x,50),
+        #                       tc = dirt_tc)
         self.walls = [StaticBox(self.physics,
                                 bl = Point(0,0),
                                 tr = Point(1,self.absolute.size.y),
@@ -373,29 +373,47 @@ class GameView(ui.RootElement):
                                 bl = Point(0,self.absolute.size.y),
                                 tr = Point(self.absolute.size.x,self.absolute.size.y+1),
                                 tc = None) ]
-        self.temp = StaticTriangle(self.physics,
-                                   (Point(0,0),
-                                    Point(500,0),
-                                    Point(500,500)))
-                                   
+        max_height = 400
+        min_height = 100
+        min_diff   = 30
         self.ship   = DynamicBox(self.physics,
-                                bl = Point(self.absolute.size.x*0.55,100),
-                                tr = Point(self.absolute.size.x*0.55+50,150),
+                                bl = Point(self.absolute.size.x*0.55,max_height+20),
+                                tr = Point(self.absolute.size.x*0.55+50,max_height+20+50),
                                 tc = self.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'ship.png')))
 
         self.land_heights = [(0,50)]
+        self.landscape = []
         pos,height = self.land_heights[0]
+        
         while pos < self.absolute.size.x:
-            y_diff  = random.normalvariate(50,20)
-            x_diff  = random.random()*50
+            y_diff  = random.normalvariate(0,50)
+            x_diff  = 100+random.random()*100
+            if abs(y_diff) < min_diff:
+                y_diff *= min_diff/float(abs(y_diff))
             pos    += x_diff
             height += y_diff
+            if height > max_height:
+                height = max_height - (2*y_diff)
+            if height < min_height:
+                height = min_height - (2*y_diff)
             self.land_heights.append( (pos,height) )
 
         #Now create a triangle and a quad for each land point
         for i in xrange(1,len(self.land_heights)):
-            pos,height = self.land_heights[i-1]
-            next_pos,next_height = self.land_heights[i]
+            bottom_x,bottom_y = self.land_heights[i-1]
+            top_x,top_y = self.land_heights[i]
+            if bottom_y > top_y:
+                self.landscape.append(StaticTriangle(self.physics,
+                                                     (Point(bottom_x,top_y),
+                                                      Point(top_x,top_y),
+                                                      Point(bottom_x,bottom_y))))
+            else:
+                self.landscape.append(StaticTriangle(self.physics,
+                                                     (Point(bottom_x,bottom_y),
+                                                      Point(top_x,bottom_y),
+                                                      Point(top_x,top_y))))
+                                                 
+            
             
 
         print self.land_heights
