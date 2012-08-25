@@ -485,8 +485,8 @@ class GameView(ui.RootElement):
                                                       Point(top_x,top_y),
                                                       Point(bottom_x,bottom_y))))
                 self.landscape.append(StaticBox(self.physics,
-                                                bl = Point(top_x,-globals.screen.y),
-                                                tr = Point(bottom_x,top_y),
+                                                bl = Point(bottom_x,-globals.screen.y),
+                                                tr = Point(top_x,top_y),
                                                 tc = True))
 
             else:
