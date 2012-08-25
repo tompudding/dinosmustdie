@@ -212,6 +212,10 @@ class Physics(object):
         for obj in self.objects:
             obj.Update()
 
+class Keys(object):
+    UP    = 1
+    LEFT  = 2
+    RIGHT = 4
 
 class GameMode(Mode):
     def __init__(self,parent):
@@ -229,6 +233,7 @@ class GameMode(Mode):
                                   ShipStates.TUTORIAL_SHOOTING : self.TutorialShooting,
                                   ShipStates.TUTORIAL_TOWING   : self.TutorialTowing}
         self.all_time_key_mask = 0
+        self.key_mask = 0
         
         #Add in 15 ooze boxes
         for i in xrange(15):
@@ -247,20 +252,24 @@ class GameMode(Mode):
         if key in self.up_keys:
             #Apply force to the ship
             self.thrust = 700
-            self.all_time_key_mask |= 1
+            self.all_time_key_mask |= Keys.UP
+            self.key_mask          |= Keys.UP
         if key in self.left_keys:
-            self.rotate = 0.05
-            self.all_time_key_mask |= 2
+            self.all_time_key_mask |= Keys.LEFT
+            self.key_mask          |= Keys.LEFT
         if key in self.right_keys:
-            self.rotate = -0.05
-            self.all_time_key_mask |= 4
+            self.all_time_key_mask |= Keys.RIGHT
+            self.key_mask          |= Keys.RIGHT
         #elif key == 0x
 
     def KeyUp(self,key):
         if key in self.up_keys:
             self.thrust = None
-        if key in self.left_keys + self.right_keys:
-            self.rotate = None
+            self.key_mask          &= ~Keys.UP
+        if key in self.left_keys:
+            self.key_mask          &= ~Keys.LEFT
+        if key in self.right_keys:
+            self.key_mask          &= ~Keys.RIGHT
 
     def MouseButtonDown(self,pos,button):
         if button == 1:
@@ -288,9 +297,14 @@ class GameMode(Mode):
             angle = self.parent.ship.body.angle + self.pi2
             vector = cmath.rect(self.thrust,angle)
             self.parent.ship.body.ApplyForce((vector.real,vector.imag),self.parent.ship.body.position)
-        if self.rotate:
+        rotate = 0
+        if self.key_mask&Keys.LEFT:
+            rotate += 0.05
+        if self.key_mask&Keys.RIGHT:
+            rotate -= 0.05
             #self.parent.ship.body.ApplyTorque(self.rotate)
-            self.parent.ship.body.angle = self.parent.ship.body.angle + self.rotate
+        if rotate:
+            self.parent.ship.body.angle = self.parent.ship.body.angle + rotate
             self.parent.ship.body.angularVelocity = 0
 
 class GameView(ui.RootElement):
