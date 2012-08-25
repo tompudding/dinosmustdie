@@ -55,8 +55,10 @@ class IntroStages(object):
     SCROLL   = 2
     COMPLETE = 3
 
+gloop_name = 'Mar Might'
 
 class GameView(ui.RootElement):
+    intro_text = "The universe runs on a gloopy black yeast extract known as {gloop}. Farming it is difficult, but scientists postulate that a hypothetical species known as humans may be the only creature in the universe able to withstand {gloop}'s addictiveness enough to create it on an industrial scale.\n\n  Level 1 - Create 10 kilotons of {gloop}\n     Subgoal 1 - Use primordial ooze to evolve the disgusting species \"Humans\"".format(gloop = gloop_name)
     def __init__(self):
         super(GameView,self).__init__(Point(0,0),globals.screen)
         self.texture = drawing.texture.Texture('starfield.png')
@@ -71,9 +73,9 @@ class GameView(ui.RootElement):
         self.menu_text = ui.TextBox(parent   = self,
                                     bl       = bl,
                                     tr       = bl + Point(1,1),
-                                    text     = 'AAAAbbbb',
+                                    text     = self.intro_text,
                                     textType = drawing.texture.TextTypes.WORLD_RELATIVE,
-                                    scale    = 4)
+                                    scale    = 3)
         #self.menu_text.SetText('bob')
 
     def Draw(self):
@@ -121,15 +123,22 @@ class GameView(ui.RootElement):
 
     def Intro(self,t):
         """For now, just scroll the background a bit"""
+        intro_elapsed = t - self.intro_start
         if self.intro_stage == IntroStages.STARTED:
+            self.menu_text.EnableChars(0)
+            self.letter_duration = 20
             self.intro_stage = IntroStages.TEXT
         elif self.intro_stage == IntroStages.TEXT:
-            if 0:
+            if intro_elapsed < len(self.menu_text.text)*self.letter_duration:
+                num_enabled = int(intro_elapsed/self.letter_duration)
+                self.menu_text.EnableChars(num_enabled)
+            else:
                 self.viewpos.SetTarget(Point(0,0),t,rate = 0.4)
                 self.intro_stage = IntroStages.SCROLL
         elif self.intro_stage == IntroStages.SCROLL:
             if not self.viewpos.HasTarget():
                 self.intro_stage = IntroStages.COMPLETE
+                self.menu_text.Disable()
 
         self.Draw()
 

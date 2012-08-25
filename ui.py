@@ -411,6 +411,7 @@ class TextBox(UIElement):
             #In this case our margin is a fixed part of the box
             self.margin      = Point(0.05,0.05)
         self.text        = text
+        self.current_enabled = len(self.text)
         self.scale       = scale
         self.colour      = colour
         self.text_type   = textType
@@ -439,6 +440,11 @@ class TextBox(UIElement):
         #for (i,(quad,letter_size)) in enumerate(zip(self.quads,letter_sizes)):
         i = 0
         while i < len(self.quads):
+            if i in self.newlines:
+                i += 1
+                cursor.x = self.margin.x
+                cursor.y -= row_height*1.2
+                continue
             quad,letter_size = self.quads[i],letter_sizes[i]
             if cursor.x + letter_size.x > (1-self.margin.x)*1.001:
                 #This would take us over a line. If we're in the middle of a word, we need to go back to the start of the 
@@ -549,7 +555,11 @@ class TextBox(UIElement):
                 q.Disable()
     
     def ReallocateResources(self):
-        self.quads = [self.text_manager.Letter(char,self.text_type) for char in self.text]
+        self.newlines = []
+        for i,char in enumerate(self.text):
+            if char == '\n':
+                self.newlines.append(i)
+        self.quads = [self.text_manager.Letter(char,self.text_type) for char in self.text if char != '\n']
 
     def Disable(self):
         """Don't draw for a while, maybe we'll need you again"""
@@ -565,6 +575,15 @@ class TextBox(UIElement):
             for q in self.quads:
                 q.Enable()
         super(TextBox,self).Enable()
+
+    def EnableChars(self,num):
+        if num < self.current_enabled:
+            for quad in self.quads[num:]:
+                quad.Disable()
+        elif num > self.current_enabled:
+            for quad in self.quads[self.current_enabled:num]:
+                quad.Enable()
+        self.current_enabled = num
 
 class FaderTextBox(TextBox):
     """A Textbox that can be smoothly faded to a different size / colour"""
