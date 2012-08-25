@@ -81,6 +81,7 @@ class UIElement(object):
         return self.absolute.bottom_left + (self.absolute.size*p)
 
     def GetRelative(self,p):
+        p = p.to_float()
         return (p - self.absolute.bottom_left)/self.absolute.size
 
     def AddChild(self,element):
@@ -553,6 +554,7 @@ class TextBox(UIElement):
         if not self.enabled:
             for q in self.quads:
                 q.Disable()
+        self.current_enabled = len(self.quads)
     
     def ReallocateResources(self):
         self.newlines = []

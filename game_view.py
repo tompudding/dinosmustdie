@@ -67,7 +67,6 @@ class Viewpos(object):
                     if distance > self.max_away:
                         self.pos += diff.unit_vector()*(distance*1.02-self.max_away)
                         newdiff = target - self.pos
-                        print distance,newdiff.length()
                     else:
                         self.pos += diff*0.02
                 
@@ -90,6 +89,11 @@ class IntroStages(object):
     TEXT     = 1
     SCROLL   = 2
     COMPLETE = 3
+
+class ShipStates(object):
+    TUTORIAL_MOVEMENT = 0
+    TUTORIAL_SHOOTING = 1
+    TUTORIAL_TOWING   = 2
 
 gloop_name = 'Mar Might'
 
@@ -299,6 +303,41 @@ class Physics(object):
         for obj in self.objects:
             obj.Update()
 
+class PlayerShip(DynamicBox):
+    def __init__(self,parent,physics,bl,tr,tc):
+        self.parent = parent
+        relative_bl = parent.GetRelative(tr + Point(10,10))
+        relative_tr = parent.GetRelative(tr + Point(400,150))
+        self.text   = ui.TextBox(parent   = parent,
+                                 bl       = relative_bl,
+                                 tr       = relative_tr,
+                                 text     = ' ',
+                                 textType = drawing.texture.TextTypes.WORLD_RELATIVE,
+                                 scale    = 2)
+        self.letter_duration = 30
+        self.text_start = None
+        super(PlayerShip,self).__init__(physics,bl,tr,tc)
+
+    def Update(self,t = None):
+        super(PlayerShip,self).Update()
+        self.text.SetPos(self.parent.GetRelative(self.GetPos()))
+        if self.text_start == None and t != None:
+            self.text_start = t+self.text_wait
+        if t != None:
+            elapsed = t - self.text_start
+            print elapsed
+            if elapsed > len(self.text.text)*self.letter_duration:
+                self.text.EnableChars()
+            elif elapsed > 0:
+                num_enabled = int(float(elapsed)/self.letter_duration)
+                self.text.EnableChars(num_enabled)
+            
+    def SetText(self,text,wait = 1000):
+        self.text.SetText(text)
+        self.text.EnableChars(0)
+        self.text_start = None
+        self.text_wait = wait
+
 class GameMode(Mode):
     def __init__(self,parent):
         self.parent = parent
@@ -306,6 +345,16 @@ class GameMode(Mode):
         self.rotate = None
         self.pi2 = math.pi/2
         self.ooze_boxes = []
+        self.up_keys = [0x111,ord('w')]
+        self.left_keys = [0x114,ord('a')]
+        self.right_keys = [0x113,ord('d')]
+        self.parent.ship.SetText('Use the W and D keys to rotate the ship, and A to provide thrust') 
+        self.parent.ship.state = ShipStates.TUTORIAL_MOVEMENT
+        self.tutorial_handlers = {ShipStates.TUTORIAL_MOVEMENT : self.TutorialMovement,
+                                  ShipStates.TUTORIAL_SHOOTING : self.TutorialShooting,
+                                  ShipStates.TUTORIAL_TOWING   : self.TutorialTowing}
+        self.all_time_key_mask = 0
+        
         #Add in 15 ooze boxes
         for i in xrange(15):
             bl = Point(random.random()*self.parent.absolute.size.x*0.9,
@@ -318,27 +367,46 @@ class GameMode(Mode):
             
         
     def KeyDown(self,key):
+        
         #if key in [13,27,32]: #return, escape, space
-        if key == 0x111:
+        if key in self.up_keys:
             #Apply force to the ship
             self.thrust = 700
-        if key == 0x114:
+            self.all_time_key_mask |= 1
+        if key in self.left_keys:
             self.rotate = 0.05
-        if key == 0x113:
+            self.all_time_key_mask |= 2
+        if key in self.right_keys:
             self.rotate = -0.05
+            self.all_time_key_mask |= 4
         #elif key == 0x
 
     def KeyUp(self,key):
-        print key
-        if key == 0x111:
+        if key in self.up_keys:
             self.thrust = None
-        if key == 0x114 or key == 0x113:
+        if key in self.left_keys + self.right_keys:
             self.rotate = None
 
     def MouseButtonDown(self,pos,button):
         return False,False
 
+    def TutorialMovement(self,t):
+        if self.all_time_key_mask == 7:
+            self.parent.ship.SetText('Aim with the mouse and left click to shoot',wait=0)
+            self.parent.ship.state = ShipStates.TUTORIAL_SHOOTING
+
+    def TutorialShooting(self,t):
+        pass
+
+    def TutorialTowing(self,t):
+        pass
+
     def Update(self,t):
+        self.parent.ship.Update(t)
+        try:
+            self.tutorial_handlers[self.parent.ship.state](t)
+        except KeyError:
+            pass
         if self.thrust:
             angle = self.parent.ship.body.angle + self.pi2
             vector = cmath.rect(self.thrust,angle)
@@ -368,7 +436,6 @@ class GameView(ui.RootElement):
         dirt_x = self.absolute.size.x/(self.ground_texture.width*2.0)
         dirt_y = (globals.screen.y+50)/(self.ground_texture.height*2.0)
         dirt_tc = [[0,0],[0,dirt_y],[dirt_x,dirt_y],[dirt_x,0]]
-        print dirt_tc
         #self.floor = StaticBox(self.physics,
         #                       bl = Point(0,-globals.screen.y),
         #                       tr = Point(self.absolute.size.x,50),
@@ -385,10 +452,11 @@ class GameView(ui.RootElement):
         self.max_floor_height = max_height = 400
         min_height = 100
         min_diff   = 30
-        self.ship   = DynamicBox(self.physics,
-                                bl = Point(self.absolute.size.x*0.55,max_height+20),
-                                tr = Point(self.absolute.size.x*0.55+50,max_height+20+50),
-                                tc = self.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'ship.png')))
+        self.ship   = PlayerShip(self,
+                                 self.physics,
+                                 bl = Point(self.absolute.size.x*0.55,max_height+20),
+                                 tr = Point(self.absolute.size.x*0.55+50,max_height+20+50),
+                                 tc = self.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'ship.png')))
 
         self.land_heights = [(0,50)]
         self.landscape = []
@@ -431,12 +499,6 @@ class GameView(ui.RootElement):
                                                 tr = Point(top_x,bottom_y),
                                                 tc = True))
                                                 
-            
-                                                 
-            
-            
-
-        print self.land_heights
         #raise SystemExit
             
         
@@ -505,7 +567,6 @@ class GameView(ui.RootElement):
         self.mode.KeyUp(key)
 
     def MouseButtonDown(self,pos,button):
-        print self.viewpos.pos + pos
         if self.mode:
             return self.mode.MouseButtonDown(pos,button)
         else:
