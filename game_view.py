@@ -57,8 +57,71 @@ class IntroStages(object):
 
 gloop_name = 'Mar Might'
 
+class Intro(object):
+    text = "The universe runs on a gloopy black yeast extract known as {gloop}. Farming it is difficult, but scientists postulate that a hypothetical species known as humans may be the only creature in the universe able to withstand {gloop}'s addictiveness enough to create it on an industrial scale.\n\n  Level 1 - Create 10 kilotons of {gloop}\n     Subgoal 1 - Use primordial ooze to evolve the disgusting species \"Humans\"".format(gloop = gloop_name)
+    def __init__(self,parent):
+        self.stage  = IntroStages.STARTED
+        self.parent = parent
+        bl = Point(0,1)
+        self.letter_duration = 20
+        self.start = None
+        self.menu_text = ui.TextBox(parent   = parent,
+                                    bl       = bl,
+                                    tr       = bl + Point(1,1),
+                                    text     = self.text,
+                                    textType = drawing.texture.TextTypes.WORLD_RELATIVE,
+                                    scale    = 3)
+        self.handlers = {IntroStages.STARTED : self.Startup,
+                         IntroStages.TEXT    : self.TextDraw,
+                         IntroStages.SCROLL  : self.Scroll}
+        self.skipped_text = False
+
+    def SkipText(self):
+        self.skipped_text = True
+        self.menu_text.EnableChars()
+
+    def KeyDown(self,key):
+        #if key in [13,27,32]: #return, escape, space
+        if not self.skipped_text:
+            self.SkipText()
+
+    def MouseButtonDown(self,pos,button):
+        if not self.skipped_text:
+            self.SkipText()
+        return False,False
+
+    def Update(self,t):
+        """For now, just scroll the background a bit"""
+        if self.start == None:
+            self.start = t
+        self.elapsed = t - self.start
+        self.stage = self.handlers[self.stage](t)
+        if self.stage == IntroStages.COMPLETE:
+            self.parent.mode = GameMode(self.parent)
+
+    def Startup(self,t):
+        self.menu_text.EnableChars(0)
+        return IntroStages.TEXT
+
+    def TextDraw(self,t):
+        if not self.skipped_text and self.elapsed < len(self.menu_text.text)*self.letter_duration:
+            num_enabled = int(self.elapsed/self.letter_duration)
+            self.menu_text.EnableChars(num_enabled)
+            return IntroStages.TEXT
+        else:
+            self.parent.viewpos.SetTarget(Point(0,0),t,rate = 0.4)
+            return IntroStages.SCROLL
+    
+    def Scroll(self,t):
+        if not self.parent.viewpos.HasTarget():
+            self.menu_text.Disable()
+            return IntroStages.COMPLETE
+        else:
+            return IntroStages.SCROLL
+
+
 class GameView(ui.RootElement):
-    intro_text = "The universe runs on a gloopy black yeast extract known as {gloop}. Farming it is difficult, but scientists postulate that a hypothetical species known as humans may be the only creature in the universe able to withstand {gloop}'s addictiveness enough to create it on an industrial scale.\n\n  Level 1 - Create 10 kilotons of {gloop}\n     Subgoal 1 - Use primordial ooze to evolve the disgusting species \"Humans\"".format(gloop = gloop_name)
+    
     def __init__(self):
         super(GameView,self).__init__(Point(0,0),globals.screen)
         self.texture = drawing.texture.Texture('starfield.png')
@@ -69,14 +132,8 @@ class GameView(ui.RootElement):
                                   drawing.constants.DrawLevels.grid)
         self.viewpos = Viewpos(Point(0,globals.screen.y))
         self.t = None
-        bl = Point(0,1)
-        self.menu_text = ui.TextBox(parent   = self,
-                                    bl       = bl,
-                                    tr       = bl + Point(1,1),
-                                    text     = self.intro_text,
-                                    textType = drawing.texture.TextTypes.WORLD_RELATIVE,
-                                    scale    = 3)
-        #self.menu_text.SetText('bob')
+        
+        self.mode = Intro(self)
 
     def Draw(self):
 
@@ -113,46 +170,19 @@ class GameView(ui.RootElement):
         glTexCoordPointerf(globals.nonstatic_text_buffer.tc_data)
         glColorPointer(4,GL_FLOAT,0,globals.nonstatic_text_buffer.colour_data)
         glDrawElements(GL_QUADS,globals.nonstatic_text_buffer.current_size,GL_UNSIGNED_INT,globals.nonstatic_text_buffer.indices)
-
-        
-        
         
         
     def KeyDown(self,key):
-        return  
+        self.mode.KeyDown(key)
 
-    def Intro(self,t):
-        """For now, just scroll the background a bit"""
-        intro_elapsed = t - self.intro_start
-        if self.intro_stage == IntroStages.STARTED:
-            self.menu_text.EnableChars(0)
-            self.letter_duration = 20
-            self.intro_stage = IntroStages.TEXT
-        elif self.intro_stage == IntroStages.TEXT:
-            if intro_elapsed < len(self.menu_text.text)*self.letter_duration:
-                num_enabled = int(intro_elapsed/self.letter_duration)
-                self.menu_text.EnableChars(num_enabled)
-            else:
-                self.viewpos.SetTarget(Point(0,0),t,rate = 0.4)
-                self.intro_stage = IntroStages.SCROLL
-        elif self.intro_stage == IntroStages.SCROLL:
-            if not self.viewpos.HasTarget():
-                self.intro_stage = IntroStages.COMPLETE
-                self.menu_text.Disable()
-
-        self.Draw()
-
+    def MouseButtonDown(self,pos,button):
+        return self.mode.MouseButtonDown(pos,button)
 
     def Update(self,t):
         if self.t == None:
-            self.intro_stage = IntroStages.STARTED
-            self.intro_start = t
             self.t = t
 
         self.viewpos.Update(t)
-
-        if self.intro_stage != IntroStages.COMPLETE:
-            return self.Intro(t)
-
+        self.mode.Update(t)
 
         self.Draw()

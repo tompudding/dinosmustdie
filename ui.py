@@ -576,7 +576,9 @@ class TextBox(UIElement):
                 q.Enable()
         super(TextBox,self).Enable()
 
-    def EnableChars(self,num):
+    def EnableChars(self,num = None):
+        if num == None:
+            num = len(self.quads)
         if num < self.current_enabled:
             for quad in self.quads[num:]:
                 quad.Disable()
