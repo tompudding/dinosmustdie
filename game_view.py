@@ -164,7 +164,7 @@ class Intro(Mode):
             num_enabled = int(self.elapsed/self.letter_duration)
             self.menu_text.EnableChars(num_enabled)
         elif self.continued:
-            self.parent.viewpos.SetTarget(Point(self.parent.viewpos.pos.x,0),t,rate = 0.4,callback = self.Scrolled)
+            self.parent.viewpos.SetTarget(self.parent.ship.GetPos()-(globals.screen*0.5),t,rate = 0.4,callback = self.Scrolled)
             #self.parent.viewpos.Follow(t,self.parent.ship)
             return IntroStages.COMPLETE
         return IntroStages.TEXT
@@ -194,7 +194,7 @@ class StaticBox(object):
         self.shape.SetAsBox(*midpoint)
         self.body = physics.world.CreateBody(self.bodydef)
         self.shape.density = 1
-        self.shape.friction = 0.3
+        self.shape.friction = 1.5
         self.body.CreateShape(self.shape)
         self.Update()
 
@@ -305,8 +305,8 @@ class GameView(ui.RootElement):
                                tr = Point(self.absolute.size.x,50),
                                atlas = self.atlas)
         self.ship   = DynamicBox(self.physics,
-                                bl = Point(self.absolute.size.x*0.55,400),
-                                tr = Point(self.absolute.size.x*0.55+50,450),
+                                bl = Point(self.absolute.size.x*0.55,100),
+                                tr = Point(self.absolute.size.x*0.55+50,150),
                                 atlas = self.atlas)
         
         self.mode = Intro(self)
