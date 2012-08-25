@@ -198,7 +198,7 @@ class StaticBox(object):
         #tr = (Point(*self.shape.vertices[2]) + Point(*self.body.position))/self.physics.scale_factor
         for i,vertex in enumerate(self.shape.vertices):
             screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
-            self.quad.vertex[i] = (screen_coords.x,screen_coords.y,10)
+            self.quad.vertex[(i+3)%4] = (screen_coords.x,screen_coords.y,10)
         #print self.body.angle,bl
         #print bl,tr
         #print self.body.position
@@ -251,9 +251,9 @@ class GameMode(Mode):
             #Apply force to the ship
             self.thrust = 700
         if key == 0x114:
-            self.rotate = 500
+            self.rotate = 0.05
         if key == 0x113:
-            self.rotate = -500
+            self.rotate = -0.05
         #elif key == 0x
 
     def KeyUp(self,key):
@@ -270,10 +270,11 @@ class GameMode(Mode):
         if self.thrust:
             angle = self.parent.ship.body.angle + self.pi2
             vector = cmath.rect(self.thrust,angle)
-            print angle
             self.parent.ship.body.ApplyForce((vector.real,vector.imag),self.parent.ship.body.position)
         if self.rotate:
-            self.parent.ship.body.ApplyTorque(self.rotate)
+            #self.parent.ship.body.ApplyTorque(self.rotate)
+            self.parent.ship.body.angle = self.parent.ship.body.angle + self.rotate
+            self.parent.ship.body.angularVelocity = 0
 
 class GameView(ui.RootElement):
     def __init__(self):
