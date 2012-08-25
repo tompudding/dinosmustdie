@@ -183,9 +183,7 @@ class Intro(Mode):
 #            return IntroStages.SCROLL
 
 class StaticBox(object):
-    def __init__(self,physics,bl,tr,tc = None,buffer = None):
-        if buffer == None:
-            buffer = globals.quad_buffer
+    def __init__(self,physics,bl,tr,tc = None):
         #Hardcode the dirt texture since right now all static things are dirt. I know I know.
         if tc != None:
             self.InitPolygons(tc)
@@ -200,7 +198,7 @@ class StaticBox(object):
         self.shape.SetAsBox(*midpoint)
         self.body = physics.world.CreateBody(self.bodydef)
         self.shape.density = 1
-        self.shape.friction = 1.5
+        self.shape.friction = 0.7
         self.body.CreateShape(self.shape)
         self.Update()
 
@@ -218,11 +216,37 @@ class StaticBox(object):
         for triangle,vertex_list in ((self.triangle1,(0,1,2)),(self.triangle2,(2,3,0))):
             v = 0
             for i in vertex_list:
-                print i
                 vertex = self.shape.vertices[i]
                 screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
                 triangle.vertex[v] = (screen_coords.x,screen_coords.y,10)
                 v += 1
+
+class StaticTriangle(object):
+    def __init__(self,physics,vertices):
+        self.physics = physics
+        self.bodydef = box2d.b2BodyDef()
+        self.triangle = drawing.Triangle(globals.ground_buffer)
+        #I don't think it matters much, but set the position to the average of the 3 points
+        midpoint = ((vertices[0] + vertices[1] + vertices[2])*self.physics.scale_factor)/3.0
+        self.bodydef.position = tuple(midpoint)
+        self.shape = box2d.b2PolygonDef()
+        self.shape.setVertices([ list(vertex*self.physics.scale_factor - midpoint) for vertex in vertices ])
+        self.body = physics.world.CreateBody(self.bodydef)
+        self.shape.density = 1
+        self.shape.friction = 0.5
+        self.body.CreateShape(self.shape)
+        self.Update()
+
+    def GetPos(self):
+        return Point(*self.body.position)/self.physics.scale_factor
+
+    def Update(self):
+        for i in xrange(3):
+            vertex = self.shape.vertices[i]
+            screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
+            self.triangle.vertex[i] = (screen_coords.x,screen_coords.y,10)
+            self.triangle.tc[i] = (screen_coords.x/64.,screen_coords.y/64.)
+        
 
 class DynamicBox(StaticBox):
     def __init__(self,physics,bl,tr,tc):
@@ -340,15 +364,20 @@ class GameView(ui.RootElement):
         self.walls = [StaticBox(self.physics,
                                 bl = Point(0,0),
                                 tr = Point(1,self.absolute.size.y),
-                                tc = None)]
-        self.walls.append( StaticBox(self.physics,
-                                     bl = Point(self.absolute.size.x,0),
-                                     tr = Point(self.absolute.size.x+1,self.absolute.size.y),
-                                     tc = None) )
-        self.walls.append( StaticBox(self.physics,
-                                     bl = Point(0,self.absolute.size.y),
-                                     tr = Point(self.absolute.size.x,self.absolute.size.y+1),
-                                     tc = None) )
+                                tc = None),
+                      StaticBox(self.physics,
+                                bl = Point(self.absolute.size.x,0),
+                                tr = Point(self.absolute.size.x+1,self.absolute.size.y),
+                                tc = None),
+                      StaticBox(self.physics,
+                                bl = Point(0,self.absolute.size.y),
+                                tr = Point(self.absolute.size.x,self.absolute.size.y+1),
+                                tc = None) ]
+        self.temp = StaticTriangle(self.physics,
+                                   (Point(0,0),
+                                    Point(500,0),
+                                    Point(500,500)))
+                                   
         self.ship   = DynamicBox(self.physics,
                                 bl = Point(self.absolute.size.x*0.55,100),
                                 tr = Point(self.absolute.size.x*0.55+50,150),
