@@ -1,7 +1,7 @@
 from OpenGL.GL import *
 import random,numpy,cmath,math
 
-import ui,globals,drawing,os
+import ui,globals,drawing,os,copy
 from globals.types import Point
 import Box2D as box2d
 import actors
@@ -187,6 +187,19 @@ class Intro(Mode):
 #        else:
 #            return IntroStages.SCROLL
 
+class fwContactPoint:
+    """
+    Structure holding the necessary information for a contact point.
+    All of the information is copied from the contact listener callbacks.
+    """
+    shape1 = None
+    shape2 = None
+    normal = None
+    position = None
+    velocity = None
+    id  = None
+    state = 0
+
 
 class MyContactListener(box2d.b2ContactListener):
     physics = None
@@ -194,7 +207,21 @@ class MyContactListener(box2d.b2ContactListener):
         super(MyContactListener, self).__init__() 
     def Add(self, point):
         """Handle add point"""
-        print 'a',dir(point.shape1)
+        if not self.physics:
+            return
+        cp          = fwContactPoint()
+        cp.shape1   = point.shape1
+        cp.shape2   = point.shape2
+        cp.position = point.position.copy()
+        cp.normal   = point.normal.copy()
+        cp.id       = point.id
+        #cp.state    = state
+
+            #print self.physics.contacts
+        self.physics.contacts.append(cp)
+        #print 'a',self.physics
+        #print 'a',dir(point.shape1)
+        
     def Persist(self, point):
         """Handle persist point"""
         #print 'b',point.shape1
@@ -214,6 +241,7 @@ class Physics(object):
     scale_factor = 0.1
     def __init__(self,parent):
         self.contact_listener = MyContactListener()
+        self.contact_listener.physics = self
         self.parent = parent
         self.worldAABB=box2d.b2AABB()
         self.worldAABB.lowerBound = (-100,-globals.screen.y-100)
@@ -235,6 +263,11 @@ class Physics(object):
         self.world.Step(self.timeStep, self.velocityIterations, self.positionIterations)
         for contact in self.contacts:
             #print contact
+            shapes = contact.shape1,contact.shape2
+            for shape in shapes:
+                if isinstance(shape.userData,actors.PlayerBullet):
+                    shape.userData.Destroy()
+                    #print 'Bullet collision!'
             pass
         for obj in self.objects:
             obj.Update()

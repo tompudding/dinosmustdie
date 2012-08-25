@@ -39,6 +39,7 @@ class StaticBox(object):
     filter_group = None
     def __init__(self,physics,bl,tr,tc = None):
         #Hardcode the dirt texture since right now all static things are dirt. I know I know.
+        self.dead = False
         self.tc = tc
         if tc != None:
             self.InitPolygons(tc)
@@ -61,27 +62,41 @@ class StaticBox(object):
         self.Update()
 
     def Destroy(self):
+        if self.dead:
+            return
         self.shape.ClearUserData()
         self.physics.world.DestroyBody(self.body)
+        self.dead = True
+        self.quad.Disable()
         
 
     def CreateShape(self,midpoint):
+        if self.dead:
+            return
         shape = box2d.b2PolygonDef()
         shape.SetAsBox(*midpoint)
         return shape
 
     def InitPolygons(self,tc):
+        if self.dead:
+            return
         self.triangle1 = drawing.Triangle(globals.ground_buffer)
         self.triangle2 = drawing.Triangle(globals.ground_buffer)
         #self.triangles = self.triangle1,self.triangle2
 
     def GetPos(self):
+        if self.dead:
+            return
         return Point(*self.body.position)/self.physics.scale_factor
 
     def GetAngle(self):
+        if self.dead:
+            return
         return self.body.angle
 
     def Update(self):
+        if self.dead:
+            return
         if not self.visible:
             return
         for triangle,vertex_list in ((self.triangle1,(0,1,2)),(self.triangle2,(2,3,0))):
@@ -102,9 +117,13 @@ class DynamicBox(StaticBox):
         physics.AddObject(self)
 
     def InitPolygons(self,tc):
+        if self.dead:
+            return
         self.quad = drawing.Quad(globals.quad_buffer,tc = tc)
 
     def Update(self):
+        if self.dead:
+            return
         #Just set the vertices
         
         #bl = (Point(*self.body.GetWorldPoint(self.shape.vertices[0])))/self.physics.scale_factor
@@ -120,6 +139,8 @@ class DynamicBox(StaticBox):
 
 class DynamicCircle(DynamicBox):
     def CreateShape(self,midpoint):
+        if self.dead:
+            return
         shape = box2d.b2CircleDef()
         shape.radius = midpoint.length()
         shape.localPosition.Set(0,0)
@@ -165,8 +186,8 @@ class PlayerShip(DynamicBox):
                 self.text.EnableChars(num_enabled)
 
     def Fire(self,pos):
-        pos = pos - self.GetPos()
-        distance,angle = cmath.polar(complex(pos.x,pos.y))
+        diff = pos - self.GetPos()
+        distance,angle = cmath.polar(complex(diff.x,diff.y))
         angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
         #0 = pi*2 is straight ahead, pi is behind.
         #so 0.75 pi to 1.25 pi is disallowed
@@ -174,14 +195,16 @@ class PlayerShip(DynamicBox):
             return
         #if distance >= self.max_distance:
         #    return
-        bpos = self.GetPos()+Point(10,5)
-        bullet = PlayerBullet(self.physics,bpos,bpos+Point(10,10),tc = self.tc)
-        #print dir(bullet.body)
-        bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + pos.unit_vector()*200)
-        self.bullets.append(bullet)
-        if len(self.bullets) > 10:
-            bullet = self.bullets.pop(0)
-            bullet.Destroy()
+        for offset in Point(20,5),Point(-20,5):
+            bpos = Point(*self.body.GetWorldPoint(tuple(offset*self.physics.scale_factor)))/self.physics.scale_factor
+            print bpos
+            bullet = PlayerBullet(self.physics,bpos,bpos+Point(10,10),tc = self.tc)
+            #print dir(bullet.body)
+            bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + (pos - bpos).unit_vector()*200)
+            self.bullets.append(bullet)
+            if len(self.bullets) > 30:
+                bullet = self.bullets.pop(0)
+                bullet.Destroy()
             
     def SetText(self,text,wait = 1000):
         self.text.SetText(text)
