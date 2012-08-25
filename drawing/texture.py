@@ -155,12 +155,12 @@ class PetsciiAtlas(TextureAtlas):
 
 class TextTypes:
     SCREEN_RELATIVE = 1
-    GRID_RELATIVE   = 2
+    WORLD_RELATIVE  = 2
     MOUSE_RELATIVE  = 3
     CUSTOM          = 4
     LEVELS          = {SCREEN_RELATIVE : constants.DrawLevels.text,
                        CUSTOM          : constants.DrawLevels.text,
-                       GRID_RELATIVE   : constants.DrawLevels.grid + 0.1,
+                       WORLD_RELATIVE  : constants.DrawLevels.grid + 0.1,
                        MOUSE_RELATIVE  : constants.DrawLevels.text}         
 
 class TextAlignments:
@@ -177,7 +177,7 @@ class TextManager(object):
         self.font_height = max(subimage.size.y for subimage in self.atlas.subimages.values())
         self.quads = opengl.QuadBuffer(131072) #these are reclaimed when out of use so this means 131072 concurrent chars
         TextTypes.BUFFER = {TextTypes.SCREEN_RELATIVE : self.quads,
-                            TextTypes.GRID_RELATIVE   : globals.nonstatic_text_buffer,
+                            TextTypes.WORLD_RELATIVE  : globals.nonstatic_text_buffer,
                             TextTypes.MOUSE_RELATIVE  : globals.mouse_relative_buffer}
 
 

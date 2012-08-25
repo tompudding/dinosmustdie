@@ -64,42 +64,69 @@ class GameView(ui.RootElement):
         self.backdrop   = drawing.Quad(globals.quad_buffer,tc = drawing.constants.full_tc)
         self.backdrop.SetVertices(Point(0,0),
                                   globals.screen*2,
-                                  0)
+                                  drawing.constants.DrawLevels.grid)
         self.viewpos = Viewpos(Point(0,globals.screen.y))
         self.t = None
+        bl = Point(0,1)
+        self.menu_text = ui.TextBox(parent   = self,
+                                    bl       = bl,
+                                    tr       = bl + Point(1,1),
+                                    text     = 'AAAAbbbb',
+                                    textType = drawing.texture.TextTypes.WORLD_RELATIVE,
+                                    scale    = 4)
+        #self.menu_text.SetText('bob')
 
     def Draw(self):
-        glEnable(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, self.texture.texture)
-        glLoadIdentity()
-        glTranslatef(-self.viewpos.pos.x,-self.viewpos.pos.y,0)
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
-        glEnableClientState(GL_COLOR_ARRAY)
+
+        #for i,q in enumerate(self.menu_text.quads):
+        #    print i,q.index
+        #print globals.nonstatic_text_buffer.indices[:24]
+            
         
+        glLoadIdentity()
+        #Draw the UI
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_COLOR_ARRAY)
+#        glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+#        glVertexPointerf(globals.ui_buffer.vertex_data)
+#        glTexCoordPointerf(globals.ui_buffer.tc_data)
+#        glColorPointer(4,GL_FLOAT,0,globals.ui_buffer.colour_data)
+#        glDrawElements(GL_QUADS,globals.ui_buffer.current_size,GL_UNSIGNED_INT,globals.ui_buffer.indices)
+
+        glEnable(GL_TEXTURE_2D)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+        
+
+        #Draw the world...
+        glBindTexture(GL_TEXTURE_2D, self.texture.texture)
+        glTranslatef(-self.viewpos.pos.x,-self.viewpos.pos.y,0)
         glVertexPointerf(globals.quad_buffer.vertex_data)
         glTexCoordPointerf(globals.quad_buffer.tc_data)
         glColorPointer(4,GL_FLOAT,0,globals.quad_buffer.colour_data)
-        glDrawElements(GL_QUADS,4,GL_UNSIGNED_INT,globals.quad_buffer.indices)
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY)
-        glDisable(GL_TEXTURE_2D)
-        
-        glVertexPointerf(globals.ui_buffer.vertex_data)
-        glTexCoordPointerf(globals.ui_buffer.tc_data)
-        glColorPointer(4,GL_FLOAT,0,globals.ui_buffer.colour_data)
-        glDrawElements(GL_QUADS,globals.ui_buffer.current_size,GL_UNSIGNED_INT,globals.ui_buffer.indices)
-        glDisableClientState(GL_VERTEX_ARRAY)
-        glDisableClientState(GL_COLOR_ARRAY)
-        glEnable(GL_TEXTURE_2D)
+        glDrawElements(GL_QUADS,globals.quad_buffer.current_size,GL_UNSIGNED_INT,globals.quad_buffer.indices)
 
+        #Draw the world text
+        glBindTexture(GL_TEXTURE_2D, globals.text_manager.atlas.texture.texture)
+        glVertexPointerf(globals.nonstatic_text_buffer.vertex_data)
+        glTexCoordPointerf(globals.nonstatic_text_buffer.tc_data)
+        glColorPointer(4,GL_FLOAT,0,globals.nonstatic_text_buffer.colour_data)
+        glDrawElements(GL_QUADS,globals.nonstatic_text_buffer.current_size,GL_UNSIGNED_INT,globals.nonstatic_text_buffer.indices)
+
+        
+        
+        
+        
     def KeyDown(self,key):
         return  
 
     def Intro(self,t):
         """For now, just scroll the background a bit"""
         if self.intro_stage == IntroStages.STARTED:
-            self.viewpos.SetTarget(Point(0,0),t,rate = 0.4)
-            self.intro_stage = IntroStages.SCROLL
+            self.intro_stage = IntroStages.TEXT
+        elif self.intro_stage == IntroStages.TEXT:
+            if 0:
+                self.viewpos.SetTarget(Point(0,0),t,rate = 0.4)
+                self.intro_stage = IntroStages.SCROLL
         elif self.intro_stage == IntroStages.SCROLL:
             if not self.viewpos.HasTarget():
                 self.intro_stage = IntroStages.COMPLETE
