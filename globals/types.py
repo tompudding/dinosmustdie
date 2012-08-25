@@ -75,6 +75,9 @@ class Point(object):
     def SquareLength(self):
         return self.x**2 + self.y**2
 
+    def unit_vector(self):
+        return self/self.length()
+
     def DistanceHeuristic(self,other):
         #return (other-self).diaglength()
         diff = other-self

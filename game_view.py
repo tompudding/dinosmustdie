@@ -6,7 +6,8 @@ from globals.types import Point
 import Box2D as box2d
 
 class Viewpos(object):
-    follow_threshold = 50
+    follow_threshold = 0
+    max_away = 250
     def __init__(self,point):
         self.pos = point
         self.NoTarget()
@@ -62,7 +63,13 @@ class Viewpos(object):
                     self.pos = target
                     self.follow_locked = True
                 else:
-                    self.pos += diff*0.01
+                    distance = diff.length()
+                    if distance > self.max_away:
+                        self.pos += diff.unit_vector()*(distance*1.02-self.max_away)
+                        newdiff = target - self.pos
+                        print distance,newdiff.length()
+                    else:
+                        self.pos += diff*0.02
                 
         elif self.target:
             if t >= self.target_time:
@@ -158,6 +165,7 @@ class Intro(Mode):
             self.menu_text.EnableChars(num_enabled)
         elif self.continued:
             self.parent.viewpos.SetTarget(Point(self.parent.viewpos.pos.x,0),t,rate = 0.4,callback = self.Scrolled)
+            #self.parent.viewpos.Follow(t,self.parent.ship)
             return IntroStages.COMPLETE
         return IntroStages.TEXT
 
