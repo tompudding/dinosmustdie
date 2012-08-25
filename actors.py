@@ -3,6 +3,8 @@ from globals.types import Point
 import globals
 import ui
 import drawing
+import cmath
+import math
 
 class StaticBox(object):
     def __init__(self,physics,bl,tr,tc = None):
@@ -31,6 +33,9 @@ class StaticBox(object):
 
     def GetPos(self):
         return Point(*self.body.position)/self.physics.scale_factor
+
+    def GetAngle(self):
+        return self.body.angle
 
     def Update(self):
         if not self.visible:
@@ -97,6 +102,9 @@ class DynamicBox(StaticBox):
         #self.quad.SetVertices(bl,tr,10)
 
 class PlayerShip(DynamicBox):
+    max_shoot = 0.75*math.pi
+    min_shoot = 1.25*math.pi
+    max_distance = 300
     def __init__(self,parent,physics,bl,tr,tc):
         self.parent = parent
         relative_bl = parent.GetRelative(tr + Point(10,10))
@@ -118,12 +126,25 @@ class PlayerShip(DynamicBox):
             self.text_start = t+self.text_wait
         if t != None:
             elapsed = t - self.text_start
-            print elapsed
             if elapsed > len(self.text.text)*self.letter_duration:
                 self.text.EnableChars()
             elif elapsed > 0:
                 num_enabled = int(float(elapsed)/self.letter_duration)
                 self.text.EnableChars(num_enabled)
+
+    def Fire(self,pos):
+        pos = pos - self.GetPos()
+        distance,angle = cmath.polar(complex(pos.x,pos.y))
+        angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
+        #0 = pi*2 is straight ahead, pi is behind.
+        #so 0.75 pi to 1.25 pi is disallowed
+        if angle <= self.min_shoot and angle >= self.max_shoot:
+            print 'No fire with angle!',angle
+            return
+        if distance >= self.max_distance:
+            print 'No fire with distance',distance
+            return
+        print 'Fire!',distance,angle
             
     def SetText(self,text,wait = 1000):
         self.text.SetText(text)

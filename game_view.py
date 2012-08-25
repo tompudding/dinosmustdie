@@ -263,6 +263,8 @@ class GameMode(Mode):
             self.rotate = None
 
     def MouseButtonDown(self,pos,button):
+        if button == 1:
+            self.parent.ship.Fire(pos)
         return False,False
 
     def TutorialMovement(self,t):
@@ -443,6 +445,7 @@ class GameView(ui.RootElement):
 
     def MouseButtonDown(self,pos,button):
         if self.mode:
+            pos = self.viewpos.pos + pos
             return self.mode.MouseButtonDown(pos,button)
         else:
             return False,False
