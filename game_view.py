@@ -58,7 +58,7 @@ class IntroStages(object):
 gloop_name = 'Mar Might'
 
 class Intro(object):
-    text = "The universe runs on a gloopy black yeast extract known as {gloop}. Farming it is difficult, but scientists postulate that a hypothetical species known as humans may be the only creature in the universe able to withstand {gloop}'s addictiveness enough to create it on an industrial scale.\n\n  Level 1 - Create 10 kilotons of {gloop}\n     Subgoal 1 - Use primordial ooze to evolve the disgusting species \"Humans\"".format(gloop = gloop_name)
+    text = "The universe runs on a gloopy black yeast extract known as {gloop}. Farming it is difficult, but scientists postulate that a hypothetical species known as humans may be the only creature in the universe able to withstand {gloop}'s addictiveness enough to create it on an industrial scale.\n\n  Level 1 - Create 10 kilotons of {gloop}\n     Subgoal 1 - Use primordial ooze to evolve the disgusting species \"Humans\"\n\n\n                   Press any key to continue".format(gloop = gloop_name)
     def __init__(self,parent):
         self.stage  = IntroStages.STARTED
         self.parent = parent
@@ -75,6 +75,7 @@ class Intro(object):
                          IntroStages.TEXT    : self.TextDraw,
                          IntroStages.SCROLL  : self.Scroll}
         self.skipped_text = False
+        self.continued = False
 
     def SkipText(self):
         self.skipped_text = True
@@ -84,10 +85,11 @@ class Intro(object):
         #if key in [13,27,32]: #return, escape, space
         if not self.skipped_text:
             self.SkipText()
+        else:
+            self.continued = True
 
     def MouseButtonDown(self,pos,button):
-        if not self.skipped_text:
-            self.SkipText()
+        self.KeyDown(0)
         return False,False
 
     def Update(self,t):
@@ -107,10 +109,11 @@ class Intro(object):
         if not self.skipped_text and self.elapsed < len(self.menu_text.text)*self.letter_duration:
             num_enabled = int(self.elapsed/self.letter_duration)
             self.menu_text.EnableChars(num_enabled)
-            return IntroStages.TEXT
-        else:
+        elif self.continued:
             self.parent.viewpos.SetTarget(Point(0,0),t,rate = 0.4)
             return IntroStages.SCROLL
+        return IntroStages.TEXT
+
     
     def Scroll(self,t):
         if not self.parent.viewpos.HasTarget():
