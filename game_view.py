@@ -203,8 +203,8 @@ class StaticBox(object):
         self.Update()
 
     def InitPolygons(self,tc):
-        self.triangle1 = drawing.Triangle(globals.ground_buffer,tc = [tc[0],tc[3],tc[2]])
-        self.triangle2 = drawing.Triangle(globals.ground_buffer,tc = [tc[2],tc[1],tc[0]])
+        self.triangle1 = drawing.Triangle(globals.ground_buffer)
+        self.triangle2 = drawing.Triangle(globals.ground_buffer)
         #self.triangles = self.triangle1,self.triangle2
 
     def GetPos(self):
@@ -219,6 +219,7 @@ class StaticBox(object):
                 vertex = self.shape.vertices[i]
                 screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
                 triangle.vertex[v] = (screen_coords.x,screen_coords.y,10)
+                triangle.tc[v]     = (screen_coords.x/64.,screen_coords.y/64.)
                 v += 1
 
 class StaticTriangle(object):
@@ -304,6 +305,17 @@ class GameMode(Mode):
         self.thrust = None
         self.rotate = None
         self.pi2 = math.pi/2
+        self.ooze_boxes = []
+        #Add in 15 ooze boxes
+        for i in xrange(15):
+            bl = Point(random.random()*self.parent.absolute.size.x*0.9,
+                       self.parent.max_floor_height + random.random()*400)
+            self.ooze_boxes.append( DynamicBox(self.parent.physics,
+                                               bl = bl,
+                                               tr = bl + Point(50,50),
+                                               tc = parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'crate.png'))) )
+                                               
+            
         
     def KeyDown(self,key):
         #if key in [13,27,32]: #return, escape, space
@@ -363,17 +375,14 @@ class GameView(ui.RootElement):
         #                       tc = dirt_tc)
         self.walls = [StaticBox(self.physics,
                                 bl = Point(0,0),
-                                tr = Point(1,self.absolute.size.y),
-                                tc = None),
+                                tr = Point(1,self.absolute.size.y)),
                       StaticBox(self.physics,
                                 bl = Point(self.absolute.size.x,0),
-                                tr = Point(self.absolute.size.x+1,self.absolute.size.y),
-                                tc = None),
+                                tr = Point(self.absolute.size.x+1,self.absolute.size.y)),
                       StaticBox(self.physics,
                                 bl = Point(0,self.absolute.size.y),
-                                tr = Point(self.absolute.size.x,self.absolute.size.y+1),
-                                tc = None) ]
-        max_height = 400
+                                tr = Point(self.absolute.size.x,self.absolute.size.y+1)) ]
+        self.max_floor_height = max_height = 400
         min_height = 100
         min_diff   = 30
         self.ship   = DynamicBox(self.physics,
@@ -407,11 +416,22 @@ class GameView(ui.RootElement):
                                                      (Point(bottom_x,top_y),
                                                       Point(top_x,top_y),
                                                       Point(bottom_x,bottom_y))))
+                self.landscape.append(StaticBox(self.physics,
+                                                bl = Point(top_x,-globals.screen.y),
+                                                tr = Point(bottom_x,top_y),
+                                                tc = True))
+
             else:
                 self.landscape.append(StaticTriangle(self.physics,
                                                      (Point(bottom_x,bottom_y),
                                                       Point(top_x,bottom_y),
                                                       Point(top_x,top_y))))
+                self.landscape.append(StaticBox(self.physics,
+                                                bl = Point(bottom_x,-globals.screen.y),
+                                                tr = Point(top_x,bottom_y),
+                                                tc = True))
+                                                
+            
                                                  
             
             
@@ -444,15 +464,10 @@ class GameView(ui.RootElement):
         
 
         #Draw the world backdrop...
-        glBindTexture(GL_TEXTURE_2D, self.backdrop_texture.texture)
-        glTranslatef(-self.viewpos.pos.x,-self.viewpos.pos.y,0)
-        glVertexPointerf(globals.backdrop_buffer.vertex_data)
-        glTexCoordPointerf(globals.backdrop_buffer.tc_data)
-        glColorPointer(4,GL_FLOAT,0,globals.backdrop_buffer.colour_data)
-        glDrawElements(GL_QUADS,4,GL_UNSIGNED_INT,globals.backdrop_buffer.indices)
 
         #Draw the ground triangles
         glBindTexture(GL_TEXTURE_2D, self.ground_texture.texture)
+        glTranslatef(-self.viewpos.pos.x,-self.viewpos.pos.y,0)
         glVertexPointerf(globals.ground_buffer.vertex_data)
         glTexCoordPointerf(globals.ground_buffer.tc_data)
         glColorPointer(4,GL_FLOAT,0,globals.ground_buffer.colour_data)
@@ -471,6 +486,16 @@ class GameView(ui.RootElement):
         glTexCoordPointerf(globals.nonstatic_text_buffer.tc_data)
         glColorPointer(4,GL_FLOAT,0,globals.nonstatic_text_buffer.colour_data)
         glDrawElements(GL_QUADS,globals.nonstatic_text_buffer.current_size,GL_UNSIGNED_INT,globals.nonstatic_text_buffer.indices)
+
+        glBindTexture(GL_TEXTURE_2D, self.backdrop_texture.texture)
+        #glLoadIdentity()
+        #glScalef(0.9,0.9,1)
+        #glTranslatef(-self.viewpos.pos.x,-self.viewpos.pos.y,0)
+        glVertexPointerf(globals.backdrop_buffer.vertex_data)
+        glTexCoordPointerf(globals.backdrop_buffer.tc_data)
+        glColorPointer(4,GL_FLOAT,0,globals.backdrop_buffer.colour_data)
+        glDrawElements(GL_QUADS,4,GL_UNSIGNED_INT,globals.backdrop_buffer.indices)
+
         
         
     def KeyDown(self,key):
