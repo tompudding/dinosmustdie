@@ -6,9 +6,12 @@ from globals.types import Point
 import Box2D as box2d
 
 class Viewpos(object):
+    follow_threshold = 50
     def __init__(self,point):
         self.pos = point
         self.NoTarget()
+        self.follow = None
+        self.follow_locked = False
 
     def NoTarget(self):
         self.target        = None
@@ -21,16 +24,25 @@ class Viewpos(object):
         self.pos = point
         self.NoTarget()
 
-    def SetTarget(self,point,t,rate=2):
+    def SetTarget(self,point,t,rate=2,callback = None):
         #Don't fuck with the view if the player is trying to control it
         self.target = point
         self.target_change = self.target - self.pos
         self.start_point   = self.pos
         self.start_time    = t
         self.duration      = self.target_change.length()/rate
+        self.callback = callback
         if self.duration < 200:
             self.duration = 200
         self.target_time   = self.start_time + self.duration
+
+    def Follow(self,t,actor):
+        """
+        Follow the given actor around.
+        """
+        self.follow        = actor
+        self.follow_start  = t
+        self.follow_locked = False
 
     def HasTarget(self):
         return self.target != None
@@ -39,10 +51,26 @@ class Viewpos(object):
         return self.pos
 
     def Update(self,t):
-        if self.target:
+        if self.follow:
+            if self.follow_locked:
+                self.pos = self.follow.GetPos() - globals.screen*0.5
+            else:
+                #We haven't locked onto it yet, so move closer, and lock on if it's below the threshold
+                target = self.follow.GetPos() - globals.screen*0.5
+                diff = target - self.pos
+                if diff.SquareLength() < self.follow_threshold:
+                    self.pos = target
+                    self.follow_locked = True
+                else:
+                    self.pos += diff*0.01
+                
+        elif self.target:
             if t >= self.target_time:
                 self.pos = self.target
                 self.NoTarget()
+                if self.callback:
+                    self.callback(t)
+                    self.callback = None
             elif t < self.start_time: #I don't think we should get this
                 return
             else:
@@ -129,9 +157,14 @@ class Intro(Mode):
             num_enabled = int(self.elapsed/self.letter_duration)
             self.menu_text.EnableChars(num_enabled)
         elif self.continued:
-            self.parent.viewpos.SetTarget(Point(self.parent.viewpos.pos.x,0),t,rate = 0.4)
+            self.parent.viewpos.SetTarget(Point(self.parent.viewpos.pos.x,0),t,rate = 0.4,callback = self.Scrolled)
             return IntroStages.COMPLETE
         return IntroStages.TEXT
+
+    def Scrolled(self,t):
+        """When the view has finished scrolling, marry it to the ship"""
+        self.parent.viewpos.Follow(t,self.parent.ship)
+        self.menu_text.Disable()
     
     def Scroll(self,t):
         pass
@@ -165,13 +198,15 @@ class StaticBox(object):
         #print self.body.position
         self.quad.SetVertices(bl,tr,10)
 
+    def GetPos(self):
+        return Point(*self.body.position)/self.physics.scale_factor
+
 
 class DynamicBox(StaticBox):
     def __init__(self,physics,bl,tr,atlas):
         super(DynamicBox,self).__init__(physics,bl,tr,atlas)
         self.body.SetMassFromShapes()
         physics.AddObject(self)
-
         
 
 class Physics(object):
@@ -217,7 +252,7 @@ class GameMode(Mode):
 
     def Update(self,t):
         if self.thrust:
-            self.parent.box.body.ApplyForce(self.thrust,self.parent.box.body.position)
+            self.parent.ship.body.ApplyForce(self.thrust,self.parent.ship.body.position)
         pass
 
 class GameView(ui.RootElement):
@@ -240,7 +275,7 @@ class GameView(ui.RootElement):
                                bl = Point(0,0),
                                tr = Point(self.absolute.size.x,50),
                                atlas = self.atlas)
-        self.box   = DynamicBox(self.physics,
+        self.ship   = DynamicBox(self.physics,
                                 bl = Point(self.absolute.size.x*0.55,1200),
                                 tr = Point(self.absolute.size.x*0.55+50,1250),
                                 atlas = self.atlas)
