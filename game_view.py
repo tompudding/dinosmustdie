@@ -183,11 +183,15 @@ class Intro(Mode):
 #            return IntroStages.SCROLL
 
 class StaticBox(object):
-    def __init__(self,physics,bl,tr,tc,buffer = None):
+    def __init__(self,physics,bl,tr,tc = None,buffer = None):
         if buffer == None:
             buffer = globals.quad_buffer
         #Hardcode the dirt texture since right now all static things are dirt. I know I know.
-        self.InitPolygons(tc)
+        if tc != None:
+            self.InitPolygons(tc)
+            self.visible = True
+        else:
+            self.visible = False
         self.physics = physics
         self.bodydef = box2d.b2BodyDef()
         midpoint = (tr - bl)*0.5*physics.scale_factor
@@ -209,6 +213,8 @@ class StaticBox(object):
         return Point(*self.body.position)/self.physics.scale_factor
 
     def Update(self):
+        if not self.visible:
+            return
         for triangle,vertex_list in ((self.triangle1,(0,1,2)),(self.triangle2,(2,3,0))):
             v = 0
             for i in vertex_list:
@@ -331,6 +337,18 @@ class GameView(ui.RootElement):
                                bl = Point(0,-globals.screen.y),
                                tr = Point(self.absolute.size.x,50),
                                tc = dirt_tc)
+        self.walls = [StaticBox(self.physics,
+                                bl = Point(0,0),
+                                tr = Point(1,self.absolute.size.y),
+                                tc = None)]
+        self.walls.append( StaticBox(self.physics,
+                                     bl = Point(self.absolute.size.x,0),
+                                     tr = Point(self.absolute.size.x+1,self.absolute.size.y),
+                                     tc = None) )
+        self.walls.append( StaticBox(self.physics,
+                                     bl = Point(0,self.absolute.size.y),
+                                     tr = Point(self.absolute.size.x,self.absolute.size.y+1),
+                                     tc = None) )
         self.ship   = DynamicBox(self.physics,
                                 bl = Point(self.absolute.size.x*0.55,100),
                                 tr = Point(self.absolute.size.x*0.55+50,150),
