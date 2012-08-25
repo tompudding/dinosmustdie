@@ -108,6 +108,7 @@ class Quad(object):
     def SetVertices(self,bl,tr,z):
         if self.deleted:
             return
+        assert(self.num_vertices == 4)
         setvertices(self.vertex,bl,tr,z)
         if self.old_vertices != None:
             self.old_vertices = numpy.copy(self.vertex[0:self.num_vertices])
@@ -117,7 +118,7 @@ class Quad(object):
     def SetColour(self,colour):
         if self.deleted:
             return
-        setcolour(self.colour,colour)
+        setcolour(self.colour,colour,self.num_vertices)
 
     def SetColours(self,colours):
         if self.deleted:
@@ -138,12 +139,12 @@ def setvertices(vertex,bl,tr,z):
     vertex[2] = (tr.x,tr.y,z)
     vertex[3] = (tr.x,bl.y,z)
 
-def setcolour(colour,value):
-    for i in xrange(4):
-        for j in xrange(4):
+def setcolour(colour,value,num_vertices):
+    for i in xrange(num_vertices):
+        for j in xrange(num_vertices):
             colour[i][j] = value[j]
 
-def setcolours(colour,values):
-    for i in xrange(4):
-        for j in xrange(4):
+def setcolours(colour,values,num_vertices):
+    for i in xrange(num_vertices):
+        for j in xrange(num_vertices):
             colour[i][j] = values[i][j]

@@ -201,15 +201,22 @@ class StaticBox(object):
         self.Update()
 
     def InitPolygons(self,tc):
-        self.triangle1 = drawing.Triangle(globals.ground_buffer,None,tc[:3])
-        self.triangle2 = drawing.Triangle(globals.ground_buffer,tc = tc[2:] + [tc[0]])
-        self.triangles = self.triangle1,self.triangle2
+        self.triangle1 = drawing.Triangle(globals.ground_buffer,tc = [tc[0],tc[3],tc[2]])
+        self.triangle2 = drawing.Triangle(globals.ground_buffer,tc = [tc[2],tc[1],tc[0]])
+        #self.triangles = self.triangle1,self.triangle2
 
     def GetPos(self):
         return Point(*self.body.position)/self.physics.scale_factor
 
     def Update(self):
-        pass
+        for triangle,vertex_list in ((self.triangle1,(0,1,2)),(self.triangle2,(2,3,0))):
+            v = 0
+            for i in vertex_list:
+                print i
+                vertex = self.shape.vertices[i]
+                screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
+                triangle.vertex[v] = (screen_coords.x,screen_coords.y,10)
+                v += 1
 
 class DynamicBox(StaticBox):
     def __init__(self,physics,bl,tr,tc):
@@ -243,7 +250,7 @@ class Physics(object):
     def __init__(self,parent):
         self.parent = parent
         self.worldAABB=box2d.b2AABB()
-        self.worldAABB.lowerBound = (-100,-100)
+        self.worldAABB.lowerBound = (-100,-globals.screen.y-100)
         self.worldAABB.upperBound = (100 + self.parent.absolute.size.x*self.scale_factor,100 + self.parent.absolute.size.y*self.scale_factor + 100)
         self.gravity = (0,-10)
         self.doSleep = True
@@ -308,6 +315,7 @@ class GameView(ui.RootElement):
         #self.atlas.TransformCoords('starfield.png',backdrop_tc) 
         #self.backdrop   = drawing.Quad(globals.quad_buffer,tc = backdrop_tc)
         self.backdrop_texture = drawing.texture.Texture('starfield.png')
+        self.ground_texture   = drawing.texture.Texture(os.path.join('sprites','dirt.png'))
         self.backdrop  = drawing.Quad(globals.backdrop_buffer,tc = numpy.array([(0,0),(0,4),(5,4),(5,0)]))
         self.backdrop.SetVertices(Point(0,0),
                                   self.absolute.size,
@@ -315,11 +323,12 @@ class GameView(ui.RootElement):
         self.viewpos = Viewpos(Point(globals.screen.x*5,globals.screen.y))
         self.t = None
         self.physics = Physics(self)
-        dirt_tc = [[0,0],[0,2],[50,2],[50,0]]
-        self.atlas.TransformCoords(os.path.join(globals.dirs.sprites,'dirt.png'),dirt_tc)
+        dirt_x = self.absolute.size.x/(self.ground_texture.width*2.0)
+        dirt_y = (globals.screen.y+50)/(self.ground_texture.height*2.0)
+        dirt_tc = [[0,0],[0,dirt_y],[dirt_x,dirt_y],[dirt_x,0]]
         print dirt_tc
         self.floor = StaticBox(self.physics,
-                               bl = Point(0,0),
+                               bl = Point(0,-globals.screen.y),
                                tr = Point(self.absolute.size.x,50),
                                tc = dirt_tc)
         self.ship   = DynamicBox(self.physics,
@@ -376,6 +385,13 @@ class GameView(ui.RootElement):
         glTexCoordPointerf(globals.backdrop_buffer.tc_data)
         glColorPointer(4,GL_FLOAT,0,globals.backdrop_buffer.colour_data)
         glDrawElements(GL_QUADS,4,GL_UNSIGNED_INT,globals.backdrop_buffer.indices)
+
+        #Draw the ground triangles
+        glBindTexture(GL_TEXTURE_2D, self.ground_texture.texture)
+        glVertexPointerf(globals.ground_buffer.vertex_data)
+        glTexCoordPointerf(globals.ground_buffer.tc_data)
+        glColorPointer(4,GL_FLOAT,0,globals.ground_buffer.colour_data)
+        glDrawElements(GL_TRIANGLES,globals.ground_buffer.current_size,GL_UNSIGNED_INT,globals.ground_buffer.indices)
         
         #Draw the world items
         glBindTexture(GL_TEXTURE_2D, self.atlas.texture.texture)
