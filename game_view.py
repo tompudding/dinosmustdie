@@ -1,5 +1,5 @@
 from OpenGL.GL import *
-import random,numpy
+import random,numpy,cmath,math
 
 import ui,globals,drawing,os
 from globals.types import Point
@@ -108,12 +108,12 @@ class Intro(Mode):
     def __init__(self,parent):
         self.stage  = IntroStages.STARTED
         self.parent = parent
-        bl = Point(0.5,0.5)
+        bl = Point(0.5,0.125)
         self.letter_duration = 20
         self.start = None
         self.menu_text = ui.TextBox(parent   = parent,
                                     bl       = bl,
-                                    tr       = bl + Point(0.1,0.5),
+                                    tr       = bl + Point(0.1,0.125),
                                     text     = self.text,
                                     textType = drawing.texture.TextTypes.WORLD_RELATIVE,
                                     scale    = 3)
@@ -192,11 +192,17 @@ class StaticBox(object):
 
     def Update(self):
         #Just set the vertices
-        bl = (Point(*self.shape.vertices[0]) + Point(*self.body.position))/self.physics.scale_factor
-        tr = (Point(*self.shape.vertices[2]) + Point(*self.body.position))/self.physics.scale_factor
+        
+        #bl = (Point(*self.body.GetWorldPoint(self.shape.vertices[0])))/self.physics.scale_factor
+        #tr = (Point(*self.body.GetWorldPoint(self.shape.vertices[2])))/self.physics.scale_factor
+        #tr = (Point(*self.shape.vertices[2]) + Point(*self.body.position))/self.physics.scale_factor
+        for i,vertex in enumerate(self.shape.vertices):
+            screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
+            self.quad.vertex[i] = (screen_coords.x,screen_coords.y,10)
+        #print self.body.angle,bl
         #print bl,tr
         #print self.body.position
-        self.quad.SetVertices(bl,tr,10)
+        #self.quad.SetVertices(bl,tr,10)
 
     def GetPos(self):
         return Point(*self.body.position)/self.physics.scale_factor
@@ -236,35 +242,49 @@ class GameMode(Mode):
     def __init__(self,parent):
         self.parent = parent
         self.thrust = None
+        self.rotate = None
+        self.pi2 = math.pi/2
         
     def KeyDown(self,key):
         #if key in [13,27,32]: #return, escape, space
-        if key == 32:
+        if key == 0x111:
             #Apply force to the ship
-            self.thrust = (0,1000)
+            self.thrust = 700
+        if key == 0x114:
+            self.rotate = 500
+        if key == 0x113:
+            self.rotate = -500
+        #elif key == 0x
 
     def KeyUp(self,key):
-        if key == 32:
+        print key
+        if key == 0x111:
             self.thrust = None
+        if key == 0x114 or key == 0x113:
+            self.rotate = None
 
     def MouseButtonDown(self,pos,button):
         return False,False
 
     def Update(self,t):
         if self.thrust:
-            self.parent.ship.body.ApplyForce(self.thrust,self.parent.ship.body.position)
-        pass
+            angle = self.parent.ship.body.angle + self.pi2
+            vector = cmath.rect(self.thrust,angle)
+            print angle
+            self.parent.ship.body.ApplyForce((vector.real,vector.imag),self.parent.ship.body.position)
+        if self.rotate:
+            self.parent.ship.body.ApplyTorque(self.rotate)
 
 class GameView(ui.RootElement):
     def __init__(self):
-        super(GameView,self).__init__(Point(0,0),Point(globals.screen.x*10,globals.screen.y*2))
+        super(GameView,self).__init__(Point(0,0),Point(globals.screen.x*10,globals.screen.y*8))
         self.atlas = drawing.texture.TextureAtlas('tiles_atlas_0.png','tiles_atlas.txt')
         self.uielements = {}
         #backdrop_tc = [[0,0],[0,1],[5,1],[5,0]]
         #self.atlas.TransformCoords('starfield.png',backdrop_tc) 
         #self.backdrop   = drawing.Quad(globals.quad_buffer,tc = backdrop_tc)
         self.backdrop_texture = drawing.texture.Texture('starfield.png')
-        self.backdrop  = drawing.Quad(globals.backdrop_buffer,tc = numpy.array([(0,0),(0,1),(5,1),(5,0)]))
+        self.backdrop  = drawing.Quad(globals.backdrop_buffer,tc = numpy.array([(0,0),(0,4),(5,4),(5,0)]))
         self.backdrop.SetVertices(Point(0,0),
                                   self.absolute.size,
                                   drawing.constants.DrawLevels.grid)
@@ -276,8 +296,8 @@ class GameView(ui.RootElement):
                                tr = Point(self.absolute.size.x,50),
                                atlas = self.atlas)
         self.ship   = DynamicBox(self.physics,
-                                bl = Point(self.absolute.size.x*0.55,1200),
-                                tr = Point(self.absolute.size.x*0.55+50,1250),
+                                bl = Point(self.absolute.size.x*0.55,400),
+                                tr = Point(self.absolute.size.x*0.55+50,450),
                                 atlas = self.atlas)
         
         self.mode = Intro(self)
