@@ -118,6 +118,7 @@ class ShipStates(object):
     DESTROY_CRATES    = 4
     WAIT_SPACE        = 5
     DINO_TEXT         = 6
+    DESTROY_DINOS     = 7
     TUTORIAL = set([TUTORIAL_MOVEMENT,TUTORIAL_SHOOTING,TUTORIAL_GRAPPLE,TUTORIAL_TOWING])
 
 class GameMode(Mode):
@@ -136,7 +137,8 @@ class GameMode(Mode):
                                   ShipStates.TUTORIAL_SHOOTING : self.TutorialShooting,
                                   ShipStates.TUTORIAL_GRAPPLE  : self.TutorialGrapple,
                                   ShipStates.TUTORIAL_TOWING   : self.TutorialTowing,
-                                  ShipStates.DESTROY_CRATES    : self.LevelDestroyCrates}
+                                  ShipStates.DESTROY_CRATES    : self.LevelDestroyCrates,
+                                  ShipStates.DESTROY_DINOS     : self.LevelDestroyDinos}
         self.all_time_key_mask = 0
         self.key_mask          = 0
         self.num_boxes         = 3
@@ -190,7 +192,6 @@ class GameMode(Mode):
             self.key_mask          &= ~Keys.RIGHT
 
     def StartDinos(self):
-        print 'Dinos!'
         self.parent.mode = Titles(self.parent)
 
     def MouseButtonDown(self,pos,button):
@@ -230,20 +231,26 @@ class GameMode(Mode):
     def LevelDestroyCrates(self,t):
         pass
 
+    def LevelDestroyDinos(self,t):
+        pass
+
     def BoxDestroyed(self,box):
+        if self.parent.ship.state != ShipStates.DESTROY_CRATES:
+            #We don't care
+            return
         #temporary cheat:
-        #if 0:
-        p = box.GetPos()
-        target = 750
-        if not p:
-            #Not sure when this would happen
-            return
-        if p.y < target:
-            self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
-            return
-        self.num_boxes -= 1
-        if self.num_boxes > 0:
-            self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
+        if 0:
+            p = box.GetPos()
+            target = 750
+            if not p:
+                #Not sure when this would happen
+                return
+            if p.y < target:
+                self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
+                return
+            self.num_boxes -= 1
+            if self.num_boxes > 0:
+                self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
         else:
             self.parent.ship.SetText('Great. Press <space> to wait 3 billion years for life to evolve',wait=0)
             self.parent.ship.state = ShipStates.WAIT_SPACE
@@ -301,7 +308,9 @@ class Titles(Mode):
         self.stage = self.handlers[self.stage](t)
         if self.stage == TitleStages.COMPLETE:
             #Lets add some dinosaurs
-            
+            #for i in xrange(20):
+            #    self.parent.AddTrex()
+            self.parent.ship.state = ShipStates.DESTROY_DINOS
             self.parent.mode = self.parent.game_mode
 
     def Startup(self,t):
