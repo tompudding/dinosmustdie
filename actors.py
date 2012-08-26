@@ -158,6 +158,7 @@ class DynamicBox(StaticBox):
             return
         self.health -= amount
         if self.health < 0:
+            globals.sounds.explode.play()
             globals.current_view.mode.BoxDestroyed(self)
             self.Destroy()
 
@@ -296,6 +297,7 @@ class PlayerShip(ShootingThing):
         self.cooldown = 0
         self.text_limit = None
         self.sound = globals.sounds.blast
+        self.sound.set_volume(0.4)
         self.health_text = ui.TextBox(parent = globals.screen_root,
                                       bl     = Point(0,0.9),
                                       tr     = Point(0.2,0.95)    ,
@@ -312,7 +314,7 @@ class PlayerShip(ShootingThing):
                                       text   = ' ',
                                       scale  = 2)
         self.SetHealth(350)
-        globals.sounds.hurt.set_volume(0.4)
+        globals.sounds.hurt.set_volume(0.2)
         self.SetScore(0)
 
     def Update(self,t = None):
