@@ -94,7 +94,9 @@ class IntroStages(object):
 class ShipStates(object):
     TUTORIAL_MOVEMENT = 0
     TUTORIAL_SHOOTING = 1
-    TUTORIAL_TOWING   = 2
+    TUTORIAL_GRAPPLE  = 2
+    TUTORIAL_TOWING   = 3
+    DESTROY_CRATES    = 4
 
 gloop_name = 'Mar Might'
 
@@ -292,7 +294,9 @@ class GameMode(Mode):
         self.parent.ship.state = ShipStates.TUTORIAL_MOVEMENT
         self.tutorial_handlers = {ShipStates.TUTORIAL_MOVEMENT : self.TutorialMovement,
                                   ShipStates.TUTORIAL_SHOOTING : self.TutorialShooting,
-                                  ShipStates.TUTORIAL_TOWING   : self.TutorialTowing}
+                                  ShipStates.TUTORIAL_GRAPPLE  : self.TutorialGrapple,
+                                  ShipStates.TUTORIAL_TOWING   : self.TutorialTowing,
+                                  ShipStates.DESTROY_CRATES    : self.LevelDestroyCrates}
         self.all_time_key_mask = 0
         self.key_mask = 0
         
@@ -348,9 +352,21 @@ class GameMode(Mode):
     def TutorialShooting(self,t):
         if self.parent.ship.fired:
             self.parent.ship.SetText('Grapple by right-clicking on a target behind your ship',wait=0)
+            self.parent.ship.state = ShipStates.TUTORIAL_GRAPPLE
+            self.parent.ship.grappled = False
+
+    def TutorialGrapple(self,t):
+        if self.parent.ship.grappled:
+            self.parent.ship.SetText('Detach the grapple by right clicking again',wait=0)
             self.parent.ship.state = ShipStates.TUTORIAL_TOWING
+            self.parent.ship.detached = False
 
     def TutorialTowing(self,t):
+        if self.parent.ship.detached:
+            self.parent.ship.SetText('Great! Now to get evolution started, lift some crates of primordial goo into the air and destroy them!',wait=0)
+            self.parent.ship.state = ShipStates.DESTROY_CRATES
+
+    def LevelDestroyCrates(self,t):
         pass
 
     def Update(self,t):

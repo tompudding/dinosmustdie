@@ -174,6 +174,9 @@ class PlayerShip(DynamicBox):
         super(PlayerShip,self).__init__(physics,bl,tr,tc)
         self.bullets = []
         self.fired = False
+        self.joint = False
+        self.grappled = False
+        self.detached = False
 
     def Update(self,t = None):
         super(PlayerShip,self).Update()
@@ -211,6 +214,11 @@ class PlayerShip(DynamicBox):
                 bullet.Destroy()
 
     def Grapple(self,pos):
+        if self.joint:
+            self.physics.world.DestroyJoint(self.joint)
+            self.joint = None
+            self.detached = True
+            return
         diff = pos - self.GetPos()
         distance,angle = cmath.polar(complex(diff.x,diff.y))
         angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
@@ -236,9 +244,19 @@ class PlayerShip(DynamicBox):
             p = phys_pos - Point(*shape.GetBody().position)
             if shape.TestPoint(trans,tuple(p)):
                 touching = shape
+                contact  = p
                 break
         else:
             touching = None
+            contact  = None
+        if not touching:
+            return
+        joint = box2d.b2DistanceJointDef()
+        joint.Initialize(self.body,touching.GetBody(),self.body.GetWorldCenter(),tuple(phys_pos))
+        joint.collideConnected = True
+        self.joint = self.physics.world.CreateJoint(joint)
+        self.grappled = True
+        
             
     def SetText(self,text,wait = 1000):
         self.text.SetText(text)
