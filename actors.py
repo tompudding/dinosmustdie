@@ -173,19 +173,65 @@ class DynamicCircle(DynamicBox):
 
 class PlayerBullet(DynamicBox):
     isBullet = True
-    mass     = 0.8
-    filter_group = -1
+    def __init__(self,physics,bl,tr,tc,filter_group,mass):
+        self.filter_group = filter_group
+        self.mass = mass
+        super(PlayerBullet,self).__init__(physics,bl,tr,tc)
 
-class Trex(DynamicBox):
-    mass   = 20
-    health = 100
+class ShootingThing(DynamicBox):
+    def Fire(self,pos):
+        diff = pos - self.GetPos()
+        distance,angle = cmath.polar(complex(diff.x,diff.y))
+        angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
+        #0 = pi*2 is straight ahead, pi is behind.
+        #so 0.75 pi to 1.25 pi is disallowed
+        if angle <= self.min_shoot and angle >= self.max_shoot:
+            return
+        if distance < self.min_shoot_distance:
+            #If you aim too close then the shots go wild
+            return 
+        if distance > self.max_shoot_distance:
+            return
+        if self.cooldown > self.t:
+            return
+        self.fired = True
+        self.cooldown = self.t + self.cooldown_time
+        #if distance >= self.max_distance:
+        #    return
+        for offset in self.cannon_positions:
+            bpos = Point(*self.body.GetWorldPoint(tuple(offset*self.physics.scale_factor)))/self.physics.scale_factor
+            bullet = PlayerBullet(self.physics,bpos,bpos+Point(20,20),tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'blast.png')),filter_group = self.filter_group,mass = self.bullet_mass)
+            #print dir(bullet.body)
+            bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + (pos - bpos).unit_vector()*self.bullet_velocity)
+            self.bullets.append(bullet)
+            if len(self.bullets) > self.max_bullets:
+                bullet = self.bullets.pop(0)
+                bullet.Destroy()
+
+
+class Trex(ShootingThing):
+    mass          = 20
+    health        = 100
+    cooldown_time = 1000
+    filter_group  = -2
+    min_shoot     = 1.2*math.pi
+    max_shoot     = 0.8*math.pi
+    min_shoot_distance = 0
+    max_shoot_distance = 2000
+    max_bullets = 2
+    bullet_mass = 0.4
+    bullet_velocity = 80
+    cannon_positions = [Point(20,5)]
     def __init__(self,parent,physics,bl,tr):
         self.parent = parent
         tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'trex.png'))
         super(Trex,self).__init__(physics,bl,tr,tc)
+        self.cooldown = 0
+        self.bullets = []
 
     def Damage(self,amount):
-        print globals.current_view.ship.state
+        if self.dead:
+            return
         if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
                                                modes.ShipStates.TUTORIAL_SHOOTING,
                                                modes.ShipStates.TUTORIAL_GRAPPLE,
@@ -197,15 +243,33 @@ class Trex(DynamicBox):
             self.parent.RemoveTrex(self)
             self.Destroy()
 
+    def Update(self,t):
+        self.t = t
+        if self.dead:
+            return
+        #If the player is above us in a 180 degree arc we'll try shooting at it
+        player_pos = self.parent.ship.GetPos()
+        if not player_pos:
+            return
+        self.Fire(player_pos)
+        
+        
 
-class PlayerShip(DynamicBox):
+class PlayerShip(ShootingThing):
     max_shoot = 0.5*math.pi
     min_shoot = 1.5*math.pi
     max_distance = 300
     max_grapple  = 175
     min_shoot_distance = 30
+    max_shoot_distance = 60000
     mass      = 3
     filter_group = -1
+    cooldown_time = 400
+    health = 10000000
+    max_bullets = 10
+    bullet_mass = 0.8
+    bullet_velocity = 200
+    cannon_positions = [Point(20,5),Point(-20,5)]
     def __init__(self,parent,physics,bl,tr,tc):
         self.parent = parent
         relative_bl = parent.GetRelative(tr + Point(10,10))
@@ -231,7 +295,10 @@ class PlayerShip(DynamicBox):
 
     def Update(self,t = None):
         self.t = t
-        self.text.SetPos(self.parent.GetRelative(self.GetPos()))
+        selfpos = self.GetPos()
+        if not selfpos:
+            return
+        self.text.SetPos(self.parent.GetRelative(selfpos))
         if self.text_start == None and t != None:
             self.text_start = t+self.text_wait
         if t != None:
@@ -256,32 +323,6 @@ class PlayerShip(DynamicBox):
             screen_coords = Point(*body.GetWorldPoint(tuple(offset)))/self.parent.physics.scale_factor
             self.grapple_quad.vertex[i] = (screen_coords.x,screen_coords.y,10)
 
-    def Fire(self,pos):
-        diff = pos - self.GetPos()
-        distance,angle = cmath.polar(complex(diff.x,diff.y))
-        angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
-        #0 = pi*2 is straight ahead, pi is behind.
-        #so 0.75 pi to 1.25 pi is disallowed
-        if angle <= self.min_shoot and angle >= self.max_shoot:
-            return
-        if distance < self.min_shoot_distance:
-            #If you aim too close then the shots go wild
-            return 
-        if self.cooldown > self.t:
-            return
-        self.fired = True
-        self.cooldown = self.t + 400
-        #if distance >= self.max_distance:
-        #    return
-        for offset in Point(20,5),Point(-20,5):
-            bpos = Point(*self.body.GetWorldPoint(tuple(offset*self.physics.scale_factor)))/self.physics.scale_factor
-            bullet = PlayerBullet(self.physics,bpos,bpos+Point(20,20),tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'blast.png')))
-            #print dir(bullet.body)
-            bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + (pos - bpos).unit_vector()*200)
-            self.bullets.append(bullet)
-            if len(self.bullets) > 30:
-                bullet = self.bullets.pop(0)
-                bullet.Destroy()
 
     def UnGrapple(self):
         self.physics.world.DestroyJoint(self.joint)

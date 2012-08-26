@@ -314,7 +314,7 @@ class Titles(Mode):
             self.parent.mode = self.parent.game_mode
 
     def Startup(self,t):
-        self.view_target = Point(self.parent.ship.GetPos().x-globals.screen.x*0.5,globals.screen.y*2)
+        self.view_target = Point(self.parent.ship.GetPos().x-globals.screen.x*0.5,globals.screen.y)
         self.parent.viewpos.SetTarget(self.view_target,
                                       t,
                                       rate = 0.4,

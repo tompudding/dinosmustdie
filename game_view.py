@@ -62,7 +62,10 @@ class Viewpos(object):
                 self.pos = self.follow.GetPos() - globals.screen*0.5
             else:
                 #We haven't locked onto it yet, so move closer, and lock on if it's below the threshold
-                target = self.follow.GetPos() - globals.screen*0.5
+                fpos = self.follow.GetPos()
+                if not fpos:
+                    return
+                target = fpos - globals.screen*0.5
                 diff = target - self.pos
                 if diff.SquareLength() < self.follow_threshold:
                     self.pos = target
@@ -364,6 +367,9 @@ class GameView(ui.RootElement):
         self.viewpos.Update(t)
         if self.mode:
             self.mode.Update(t)
+
+        for enemy in self.enemies:
+            enemy.Update(t)
 
         self.Draw()
 
