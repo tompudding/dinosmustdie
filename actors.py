@@ -362,6 +362,7 @@ class PlayerShip(ShootingThing):
         if self.child_joint:
             self.child_joint.parent_joint = None
             self.child_joint = None
+            globals.sounds.ungrapple.play()
 
     def Grapple(self,pos):
         if self.joint:
@@ -405,6 +406,7 @@ class PlayerShip(ShootingThing):
             self.contact  = None
         if not self.touching:
             return
+        globals.sounds.grapple.play()
         #Tell the other body that it's in a joint with us so that 
         target = self.touching.userData
         if target == None:

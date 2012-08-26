@@ -187,6 +187,7 @@ class GameMode(Mode):
         if key == pygame.locals.K_SPACE:
             if self.parent.ship.state == ShipStates.WAIT_SPACE:
                 self.parent.ship.state = ShipStates.DINO_TEXT
+                self.parent.ship.SetText(' ')
                 self.StartDinos()
         #elif key == 0x
 
