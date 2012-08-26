@@ -8,6 +8,7 @@ import math
 import os
 import game_view
 import modes
+import random
 
 class StaticTriangle(object):
     def __init__(self,physics,vertices):
@@ -231,6 +232,7 @@ class Trex(ShootingThing):
         self.bullets = []
         self.sound = globals.sounds.dino_blast
         self.sound.set_volume(0.01)
+        self.death_sounds = globals.sounds.dino_die1,globals.sounds.dino_die2,globals.sounds.dino_die3
 
     def Damage(self,amount):
         if self.dead:
@@ -243,6 +245,7 @@ class Trex(ShootingThing):
             return
         self.health -= amount
         if self.health < 0:
+            random.choice(self.death_sounds).play()
             #globals.current_view.mode.BoxDestroyed(self)
             self.parent.RemoveTrex(self)
             self.Destroy()
