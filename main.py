@@ -2,6 +2,7 @@ import os, sys
 import pygame
 import game_view,ui,globals
 import drawing
+import sounds
 from globals.types import Point
 
 from OpenGL.arrays import numpymodule
@@ -20,6 +21,7 @@ def Init():
     globals.colour_tiles          = drawing.QuadBuffer(131072)
     globals.mouse_relative_buffer = drawing.QuadBuffer(1024)
     globals.ground_buffer         = drawing.TriangleBuffer(131072)
+    globals.sounds                = sounds.Sounds()
 
     globals.dirs = globals.types.Directories('resource')
     pygame.init()

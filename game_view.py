@@ -401,6 +401,7 @@ class GameView(ui.RootElement):
                                          self.physics,
                                          bl = bl,
                                          tr = bl + Point(50,50)) )
+        self.ship.SetEnemies(len(self.enemies))
 
     def RemoveTrex(self,trex):
         for i in xrange(len(self.enemies)):
@@ -408,5 +409,6 @@ class GameView(ui.RootElement):
                 del self.enemies[i]
                 break
         self.ship.AddScore(129)
+        self.ship.SetEnemies(len(self.enemies))
         if len(self.enemies) == 0:
             self.mode = modes.GameOver(self,win = True,score = self.ship.score)

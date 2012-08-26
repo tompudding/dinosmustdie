@@ -193,6 +193,7 @@ class ShootingThing(DynamicBox):
             return
         if self.cooldown > self.t:
             return
+        self.sound.play()
         self.fired = True
         self.cooldown = self.t + self.cooldown_time
         #if distance >= self.max_distance:
@@ -209,7 +210,7 @@ class ShootingThing(DynamicBox):
 
 
 class Trex(ShootingThing):
-    mass          = 20
+    mass          = 1
     health        = 100
     cooldown_time = 1000
     filter_group  = -2
@@ -218,7 +219,7 @@ class Trex(ShootingThing):
     min_shoot_distance = 0
     max_shoot_distance = 2000
     max_bullets = 2
-    bullet_mass = 0.4
+    bullet_mass = 0.04
     bullet_velocity = 80
     cannon_positions = [Point(20,5)]
     def __init__(self,parent,physics,bl,tr):
@@ -227,6 +228,8 @@ class Trex(ShootingThing):
         super(Trex,self).__init__(physics,bl,tr,tc)
         self.cooldown = 0
         self.bullets = []
+        self.sound = globals.sounds.dino_blast
+        self.sound.set_volume(0.01)
 
     def Damage(self,amount):
         if self.dead:
@@ -267,7 +270,7 @@ class PlayerShip(ShootingThing):
     cooldown_time = 400
     health = 10000000
     max_bullets = 10
-    bullet_mass = 0.8
+    bullet_mass = 0.08
     bullet_velocity = 200
     cannon_positions = [Point(20,5),Point(-20,5)]
     def __init__(self,parent,physics,bl,tr,tc):
@@ -292,6 +295,7 @@ class PlayerShip(ShootingThing):
         self.bullets = []
         self.cooldown = 0
         self.text_limit = None
+        self.sound = globals.sounds.blast
         self.health_text = ui.TextBox(parent = globals.screen_root,
                                       bl     = Point(0,0.9),
                                       tr     = Point(0.2,0.95)    ,
@@ -302,7 +306,13 @@ class PlayerShip(ShootingThing):
                                       tr     = Point(0.2,0.9)    ,
                                       text   = ' ',
                                       scale  = 2)
+        self.number_enemies_text = ui.TextBox(parent = globals.screen_root,
+                                      bl     = Point(0,0.8),
+                                      tr     = Point(0.2,0.85)    ,
+                                      text   = ' ',
+                                      scale  = 2)
         self.SetHealth(350)
+        globals.sounds.hurt.set_volume(0.4)
         self.SetScore(0)
 
     def Update(self,t = None):
@@ -425,6 +435,10 @@ class PlayerShip(ShootingThing):
         self.score = value
         self.score_text.SetText('score: %d' % self.score)
 
+    def SetEnemies(self,value):
+        self.num_enemies = value
+        self.number_enemies_text.SetText('Dinosaurs : %s' % self.num_enemies)
+
     def AddScore(self,value):
         self.SetScore(self.score + value)
 
@@ -434,6 +448,7 @@ class PlayerShip(ShootingThing):
         if globals.current_view.ship.state != modes.ShipStates.DESTROY_DINOS:
             return
         self.SetHealth(self.health - amount)
+        globals.sounds.hurt.play()
         if self.health <= 0:
             #globals.current_view.mode.BoxDestroyed(self)
             self.parent.mode = modes.GameOver(self.parent,win = False,score = self.score)
@@ -441,7 +456,9 @@ class PlayerShip(ShootingThing):
     def Disable(self):
         self.health_text.Disable()
         self.score_text.Disable()
+        self.number_enemies_text.Disable()
 
     def Enable(self):
         self.health_text.Enable()
         self.score_text.Enable()
+        self.number_enemies_text.Enable()
