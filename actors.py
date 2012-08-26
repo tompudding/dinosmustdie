@@ -393,6 +393,7 @@ class PlayerShip(ShootingThing):
                     if sign > 0:
                         distance = (enemy_pos - left_part).length()
                         if distance < 600:
+                            self.AddScore(10)
                             enemy.Damage(5)
                     
 

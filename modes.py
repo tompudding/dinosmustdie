@@ -375,6 +375,7 @@ class Titles(Mode):
             self.skipped_text = True
             self.blurb_text.EnableChars()
             self.title_text.Enable()
+            globals.sounds.dinosmustdie.play()
 
 
     def Scrolled(self,t):
@@ -404,6 +405,7 @@ class Titles(Mode):
                 self.blurb_text.EnableChars(num_enabled)
             elif self.elapsed - len(self.blurb_text.text)*self.letter_duration > 1000:
                 self.title_text.Enable()
+                globals.sounds.dinosmustdie.play()
                 self.skipped_text = True
         elif self.continued:
             self.parent.viewpos.SetTarget(self.parent.ship.GetPos()-(globals.screen*0.5),t,rate = 0.4,callback = self.ScrolledDown)
