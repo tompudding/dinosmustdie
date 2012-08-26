@@ -59,7 +59,7 @@ class StaticBox(object):
         self.body = physics.world.CreateBody(self.bodydef)
         self.shape.density = self.mass
         self.shape.friction = 0.7
-        self.body.CreateShape(self.shape)
+        self.shapeI = self.body.CreateShape(self.shape)
         self.Update()
 
     def Destroy(self):
@@ -157,6 +157,7 @@ class PlayerShip(DynamicBox):
     min_shoot = 1.5*math.pi
     max_distance = 300
     max_grapple  = 175
+    min_shoot_distance = 30
     mass      = 3
     filter_group = -1
     def __init__(self,parent,physics,bl,tr,tc):
@@ -179,9 +180,11 @@ class PlayerShip(DynamicBox):
         self.detached = False
         super(PlayerShip,self).__init__(physics,bl,tr,tc)
         self.bullets = []
+        self.cooldown = 0
 
     def Update(self,t = None):
         super(PlayerShip,self).Update()
+        self.t = t
         self.text.SetPos(self.parent.GetRelative(self.GetPos()))
         if self.text_start == None and t != None:
             self.text_start = t+self.text_wait
@@ -213,7 +216,13 @@ class PlayerShip(DynamicBox):
         #so 0.75 pi to 1.25 pi is disallowed
         if angle <= self.min_shoot and angle >= self.max_shoot:
             return
+        if distance < self.min_shoot_distance:
+            #If you aim too close then the shots go wild
+            return 
+        if self.cooldown > self.t:
+            return
         self.fired = True
+        self.cooldown = self.t + 400
         #if distance >= self.max_distance:
         #    return
         for offset in Point(20,5),Point(-20,5):
@@ -253,6 +262,13 @@ class PlayerShip(DynamicBox):
         aabb = box2d.b2AABB()
         phys_pos = pos*self.physics.scale_factor
         print 'Grapple',phys_pos
+        #First of all make sure it's not inside us
+        trans = box2d.b2XForm()
+        trans.SetIdentity()
+        p = phys_pos - Point(*self.body.position)
+        if self.shapeI.TestPoint(trans,tuple(p)):
+            return
+
         aabb.lowerBound.Set(phys_pos.x-0.1,phys_pos.y-0.1)
         aabb.upperBound.Set(phys_pos.x+0.1,phys_pos.y+0.1)
         (count,shapes) = self.physics.world.Query(aabb,10)
