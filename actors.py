@@ -151,7 +151,6 @@ class DynamicBox(StaticBox):
             self.quad.vertex[(i+3)%4] = (screen_coords.x,screen_coords.y,10)
 
     def Damage(self,amount):
-        print globals.current_view.ship.state
         if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
                                                modes.ShipStates.TUTORIAL_SHOOTING,
                                                modes.ShipStates.TUTORIAL_GRAPPLE,

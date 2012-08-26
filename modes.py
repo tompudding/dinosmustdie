@@ -354,7 +354,6 @@ class Titles(Mode):
 
 
     def Scrolled(self,t):
-        print 'Scrolled!'
         bl = self.parent.GetRelative(self.view_target)
         tr = bl + self.parent.GetRelative(globals.screen)
         self.blurb_text = ui.TextBox(parent = self.parent,
@@ -456,7 +455,6 @@ class GameOver(Mode):
             self.blurb_text.EnableChars()
 
     def Scrolled(self,t):
-        print 'Scrolled!'
         bl = self.parent.GetRelative(self.view_target)
         tr = bl + self.parent.GetRelative(globals.screen)
         self.blurb_text = ui.TextBox(parent = self.parent,
