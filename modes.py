@@ -160,11 +160,10 @@ class GameMode(Mode):
         for i in xrange(15):
             bl = Point(random.random()*self.parent.absolute.size.x*0.9,
                        self.parent.max_floor_height + random.random()*400)
-            self.ooze_boxes.append( actors.DynamicBox(self.parent.physics,
-                                                      bl = bl,
-                                                      tr = bl + Point(50,50),
-                                                      tc = parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'crate.png'))) )
-                                               
+            self.ooze_boxes.append( actors.Crate(self.parent.physics,
+                                                 bl = bl,
+                                                 tr = bl + Point(50,50),
+                                                 tc = parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'crate.png'))) )
             
         
     def KeyDown(self,key):
@@ -189,6 +188,9 @@ class GameMode(Mode):
                 self.parent.ship.state = ShipStates.DINO_TEXT
                 self.parent.ship.SetText(' ')
                 self.StartDinos()
+            else:
+                self.parent.ship.FireBeam()
+                
         #elif key == 0x
 
     def KeyUp(self,key):
@@ -199,6 +201,8 @@ class GameMode(Mode):
             self.key_mask          &= ~Keys.LEFT
         if key in self.right_keys:
             self.key_mask          &= ~Keys.RIGHT
+        if key == pygame.locals.K_SPACE:
+            self.parent.ship.StopBeam()
 
     def StartDinos(self):
         self.parent.mode = Titles(self.parent)
@@ -245,22 +249,28 @@ class GameMode(Mode):
         pass
 
     def BoxDestroyed(self,box):
+        index = None
+        for i,crate in enumerate(self.ooze_boxes):
+            if crate is box:
+                index = i
+        if index != None:
+            del self.ooze_boxes[index]
         if self.parent.ship.state != ShipStates.DESTROY_CRATES:
             #We don't care
             return
         #temporary cheat:
-        #if 0:
-        p = box.GetPos()
-        target = 750
-        if not p:
-            #Not sure when this would happen
-            return
-        if p.y < target:
-            self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
-            return
-        self.num_boxes -= 1
-        if self.num_boxes > 0:
-            self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
+        if 0:
+            p = box.GetPos()
+            target = 750
+            if not p:
+                #Not sure when this would happen
+                return
+            if p.y < target:
+                self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
+                return
+            self.num_boxes -= 1
+            if self.num_boxes > 0:
+                self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
         else:
             self.parent.ship.SetText('Great. Press <space> to wait 3 billion years for life to evolve',wait=0)
             time_taken = self.t - self.start_task_time
@@ -284,9 +294,14 @@ class GameMode(Mode):
             self.tutorial_handlers[self.parent.ship.state](t)
         except KeyError:
             pass
-        if self.thrust:
+        if self.thrust or self.parent.ship.beam:
+            total_thrust = 0
+            if self.thrust:
+                total_thrust += self.thrust
+            if self.parent.ship.beam:
+                total_thrust -= 2000.0
             angle = self.parent.ship.body.angle + self.pi2
-            vector = cmath.rect(self.thrust,angle)
+            vector = cmath.rect(total_thrust,angle)
             self.parent.ship.body.ApplyForce((vector.real,vector.imag),self.parent.ship.body.position)
         rotate = 0
         if self.key_mask&Keys.LEFT:

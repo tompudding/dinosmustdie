@@ -159,18 +159,23 @@ class DynamicBox(StaticBox):
             return
         self.health -= amount
         if self.health < 0:
-            globals.sounds.explode.play()
-            globals.current_view.mode.BoxDestroyed(self)
             self.Destroy()
 
-class DynamicCircle(DynamicBox):
-    def CreateShape(self,midpoint):
-        if self.dead:
+class Crate(DynamicBox):
+    def Damage(self,amount):
+        if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
+                                               modes.ShipStates.TUTORIAL_SHOOTING,
+                                               modes.ShipStates.TUTORIAL_GRAPPLE,
+                                               modes.ShipStates.TUTORIAL_TOWING]:
             return
-        shape = box2d.b2CircleDef()
-        shape.radius = midpoint.length()
-        shape.localPosition.Set(0,0)
-        return shape
+        self.health -= amount
+        if self.health < 0:
+            index = None
+            globals.sounds.explode.play()
+            if hasattr(globals.current_view.mode,'BoxDestroyed'):
+                globals.current_view.mode.BoxDestroyed(self)
+            self.Destroy()
+
 
 class PlayerBullet(DynamicBox):
     isBullet = True
@@ -288,11 +293,17 @@ class PlayerShip(ShootingThing):
                                  textType = drawing.texture.TextTypes.WORLD_RELATIVE,
                                  scale    = 2)
         self.grapple_quad = drawing.Quad(globals.quad_buffer,tc = parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'grapple.png')))
+        self.beam_quad = drawing.Quad(globals.quad_buffer,tc = parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'beam.png')))
+        self.beam_quad.Disable()
+        self.beam = False
+        self.beam_power = 0
+        self.last_beam_update = 0
         self.grapple_quad.Disable()
         self.letter_duration = 30
         self.text_start = None
         self.fired = False
         self.joint = False
+        self.t = 0
         self.grappled = False
         self.detached = False
         super(PlayerShip,self).__init__(physics,bl,tr,tc)
@@ -311,11 +322,17 @@ class PlayerShip(ShootingThing):
                                       tr     = Point(0.2,0.9)    ,
                                       text   = ' ',
                                       scale  = 2)
-        self.number_enemies_text = ui.TextBox(parent = globals.screen_root,
+        self.beam_power_text = ui.TextBox(parent = globals.screen_root,
                                       bl     = Point(0,0.8),
-                                      tr     = Point(0.2,0.85)    ,
+                                      tr     = Point(0.3,0.85)    ,
                                       text   = ' ',
                                       scale  = 2)
+        self.number_enemies_text = ui.TextBox(parent = globals.screen_root,
+                                      bl     = Point(0,0.75),
+                                      tr     = Point(0.3,0.80)    ,
+                                      text   = ' ',
+                                      scale  = 2)
+        self.AdjustBeamPower(1000)
         self.SetHealth(350)
         globals.sounds.hurt.set_volume(0.2)
         self.SetScore(0)
@@ -337,6 +354,50 @@ class PlayerShip(ShootingThing):
             elif elapsed > 0:
                 num_enabled = int(float(elapsed)/self.letter_duration)
                 self.text.EnableChars(num_enabled)
+
+        self.AdjustBeamPower(3)
+        if self.beam:
+            self.AdjustBeamPower(-10)
+            if self.beam_power <= 0:
+                self.StopBeam()
+
+        if self.beam:
+            self.beam_quad.Enable()
+            angle = self.GetAngle()
+            unit_vector = cmath.rect(1000,angle + math.pi/2)
+            unit_vector = Point(unit_vector.real,unit_vector.imag)
+            i = 0
+            left_part  = Point(*self.body.GetWorldPoint(tuple(Point(-2,0.5))))/self.parent.physics.scale_factor
+            right_part = Point(*self.body.GetWorldPoint(tuple(Point(2,0.5))))/self.parent.physics.scale_factor
+            left_distant = left_part + unit_vector
+            right_distant = right_part + unit_vector
+            for i,vertex in enumerate((left_part,left_distant,right_distant,right_part,)):
+                self.beam_quad.vertex[i] = (vertex.x,vertex.y,20)
+
+            #Are we damaging anybody
+            for enemy in self.parent.enemies + self.parent.game_mode.ooze_boxes:
+                enemy_pos = enemy.GetPos()
+                print enemy_pos
+                signs = []
+                for a,b in ((left_part,left_distant),(right_part,right_distant)):
+                    sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
+                    signs.append(sign)
+                if signs[0]*signs[-1] < 0:
+                    #i.e the two signs were different, i.e the thing was on the different side of each line
+                    #i.e it's between the lines
+                    #Is it in front though?
+                    a = left_part
+                    b = right_part
+                    sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
+                    if sign > 0:
+                        distance = (enemy_pos - left_part).length()
+                        if distance < 600:
+                            enemy.Damage(5)
+                    
+
+        else:
+            self.beam_quad.Disable()
+ 
 
         #Set the vertices of the grapple_quad
         if not self.grappled:
@@ -363,6 +424,16 @@ class PlayerShip(ShootingThing):
             self.child_joint.parent_joint = None
             self.child_joint = None
             globals.sounds.ungrapple.play()
+
+    def FireBeam(self):
+        if self.beam == False:
+            globals.sounds.beam.play()
+            self.beam = True
+
+    def StopBeam(self):
+        if self.beam == True:
+            globals.sounds.beam.stop()
+            self.beam = False
 
     def Grapple(self,pos):
         if self.joint:
@@ -449,6 +520,16 @@ class PlayerShip(ShootingThing):
     def AddScore(self,value):
         self.SetScore(self.score + value)
 
+    def AdjustBeamPower(self,amount):
+        self.beam_power += amount
+        if self.beam_power < 0:
+            self.beam_power = 0
+        if self.beam_power > 1000:
+            self.beam_power = 1000
+        if self.t - self.last_beam_update > 100:
+            self.beam_power_text.SetText('beam power : %d' % self.beam_power)
+            self.last_beam_update = self.t
+
     def Damage(self,amount):
         if self.dead:
             return
@@ -465,8 +546,10 @@ class PlayerShip(ShootingThing):
         self.health_text.Disable()
         self.score_text.Disable()
         self.number_enemies_text.Disable()
+        self.beam_power_text.Disable()
 
     def Enable(self):
         self.health_text.Enable()
         self.score_text.Enable()
         self.number_enemies_text.Enable()
+        self.beam_power_text.Enable()

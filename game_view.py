@@ -396,7 +396,7 @@ class GameView(ui.RootElement):
 
     def AddTrex(self):
         x = 0.1 + (random.random()*self.absolute.size.x*0.9)
-        bl = Point(x,self.GetFloorHeight(x))
+        bl = Point(x,self.GetFloorHeight(x)+100)
         self.enemies.append( actors.Trex(self,
                                          self.physics,
                                          bl = bl,
