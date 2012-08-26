@@ -270,23 +270,109 @@ class GameMode(Mode):
             self.parent.ship.body.angle = self.parent.ship.body.angle + rotate
             self.parent.ship.body.angularVelocity = 0
 
+class TitleStages(object):
+    STARTED  = 0
+    TEXT     = 1
+    SCROLL   = 2
+    COMPLETE = 3
+    WAIT     = 4
+
 
 class Titles(Mode):
+    blurb = "After waiting for 3 billion years you starting to seriously fancy some gloopy {gloop}. Unfortunately for you (and the galaxy) you have overslept by 100 million years and without your guiding tentacle Dinosaurs have risen to dominate the planet. Dinosaurs *hate* {gloop}, and so...".format(gloop = gloop_name)
     def __init__(self,parent):
-        self.parent = parent
-        self.t      = None
+        self.parent          = parent
+        self.start           = None
+        self.skipped_text    = False
+        self.continued       = False
+        self.letter_duration = 20
+        self.blurb_text      = None
+        self.stage           = TitleStages.STARTED
+        self.handlers        = {TitleStages.STARTED : self.Startup,
+                                TitleStages.TEXT    : self.TextDraw,
+                                TitleStages.SCROLL  : self.Wait,
+                                TitleStages.WAIT    : self.Wait}
+
 
     def Update(self,t):
-        if self.t == None:
-            self.parent.viewpos.SetTarget(Point(self.parent.ship.GetPos().x-globals.screen.x*0.5,globals.screen.y*2),
-                                          t,
-                                          rate = 0.4,
-                                          callback = self.Scrolled)
-        self.t = t
+        if self.start == None:
+            self.start = t
+        self.elapsed = t - self.start
+        self.stage = self.handlers[self.stage](t)
+        if self.stage == TitleStages.COMPLETE:
+            self.parent.mode = self.parent.game_mode
+
+    def Startup(self,t):
+        self.view_target = Point(self.parent.ship.GetPos().x-globals.screen.x*0.5,globals.screen.y*2)
+        self.parent.viewpos.SetTarget(self.view_target,
+                                      t,
+                                      rate = 0.4,
+                                      callback = self.Scrolled)
+        return TitleStages.WAIT
+
+    def Wait(self,t):
+        return self.stage
+
+    def SkipText(self):
+        if self.blurb_text:
+            self.skipped_text = True
+            self.blurb_text.EnableChars()
+            self.title_text.Enable()
 
 
     def Scrolled(self,t):
         print 'Scrolled!'
+        bl = self.parent.GetRelative(self.view_target)
+        tr = bl + self.parent.GetRelative(globals.screen)
+        self.blurb_text = ui.TextBox(parent = self.parent,
+                                     bl     = bl         ,
+                                     tr     = tr         ,
+                                     text   = self.blurb ,
+                                     textType = drawing.texture.TextTypes.WORLD_RELATIVE,
+                                     scale  = 3)
+        self.title_text = ui.TextBox(parent = self.parent,
+                                     bl     = bl + self.parent.GetRelative(Point(globals.screen.x*0.25,0)),
+                                     tr     = bl + self.parent.GetRelative(Point(globals.screen.x,globals.screen.y*0.6)),
+                                     text   = 'Dinosaurs\n   Must\n   Die!!!',
+                                     textType = drawing.texture.TextTypes.WORLD_RELATIVE,
+                                     scale  = 8)
+        self.start = t
+        self.blurb_text.EnableChars(0)
+        self.title_text.Disable()
+        self.stage = TitleStages.TEXT
+
+    def TextDraw(self,t):
+        if not self.skipped_text:
+            if self.elapsed < len(self.blurb_text.text)*self.letter_duration:
+                num_enabled = int(self.elapsed/self.letter_duration)
+                self.blurb_text.EnableChars(num_enabled)
+            elif self.elapsed - len(self.blurb_text.text)*self.letter_duration > 1000:
+                self.title_text.Enable()
+                self.skipped_text = True
+        elif self.continued:
+            self.parent.viewpos.SetTarget(self.parent.ship.GetPos()-(globals.screen*0.5),t,rate = 0.4,callback = self.ScrolledDown)
+            #self.parent.viewpos.Follow(t,self.parent.ship)
+            return TitleStages.COMPLETE
+        return TitleStages.TEXT
+
+    def ScrolledDown(self,t):
+        """When the view has finished scrolling, marry it to the ship"""
+        self.parent.viewpos.Follow(t,self.parent.ship)
+        self.blurb_text.Delete()
+        self.title_text.Delete()
+
+    def KeyDown(self,key):
+        #if key in [13,27,32]: #return, escape, space
+        if not self.skipped_text:
+            self.SkipText()
+        else:
+            self.continued = True
+
+    def MouseButtonDown(self,pos,button):
+        self.KeyDown(0)
+        return False,False
+
+
 
     
     def Draw(self):
