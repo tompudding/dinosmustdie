@@ -235,7 +235,7 @@ class GameView(ui.RootElement):
         self.ship   = actors.PlayerShip(self,
                                         self.physics,
                                         bl = Point(self.absolute.size.x*0.55,max_height+20),
-                                        tr = Point(self.absolute.size.x*0.55+50,max_height+20+50),
+                                        tr = Point(self.absolute.size.x*0.55+50,max_height+20+43),
                                         tc = self.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'ship.png')))
         
         self.land_heights = [(0,50)]

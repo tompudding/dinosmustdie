@@ -300,6 +300,8 @@ class Titles(Mode):
         self.elapsed = t - self.start
         self.stage = self.handlers[self.stage](t)
         if self.stage == TitleStages.COMPLETE:
+            #Lets add some dinosaurs
+            
             self.parent.mode = self.parent.game_mode
 
     def Startup(self,t):
