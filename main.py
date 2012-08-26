@@ -22,8 +22,10 @@ def Init():
     globals.mouse_relative_buffer = drawing.QuadBuffer(1024)
     globals.ground_buffer         = drawing.TriangleBuffer(131072)
     globals.sounds                = sounds.Sounds()
+    
 
     globals.dirs = globals.types.Directories('resource')
+
     pygame.init()
     screen = pygame.display.set_mode((w,h),pygame.OPENGL|pygame.DOUBLEBUF)
     glClearColor(0.0, 0.0, 0.0, 1.0)

@@ -429,6 +429,8 @@ class GameOver(Mode):
                                 TitleStages.WAIT    : self.Wait}
         self.parent.Pause()
         self.parent.ship.Disable()
+        pygame.mixer.music.load('end_fail.mp3')
+        pygame.mixer.music.play(-1)
 
     def Update(self,t):
         if self.start == None:
