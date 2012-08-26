@@ -230,7 +230,19 @@ class MyContactListener(box2d.b2ContactListener):
         pass
     def Remove(self, point):
         """Handle remove point"""
-        #print 'c',point
+        # if not self.physics:
+        #     return
+        # print 'aaa'
+        # cp          = fwContactPoint()
+        # cp.shape1   = point.shape1
+        # cp.shape2   = point.shape2
+        # cp.position = point.position.copy()
+        # cp.normal   = point.normal.copy()
+        # cp.id       = point.id
+        # for contact in self.physics.contacts:
+        #     if contact == cp:
+        #         print 'x'
+        #         raise SystemExit
         pass
     def Result(self, point):
         """Handle results"""
@@ -265,14 +277,22 @@ class Physics(object):
         self.world.Step(self.timeStep, self.velocityIterations, self.positionIterations)
         for contact in self.contacts:
             #print contact
-            shapes = contact.shape1,contact.shape2
-            for shape in shapes:
-                if isinstance(shape.userData,actors.PlayerBullet):
-                    shape.userData.Destroy()
-                    #print 'Bullet collision!'
-            pass
+            if isinstance(contact.shape1.userData,actors.PlayerBullet):
+                bullet = contact.shape1
+                target = contact.shape2
+            elif isinstance(contact.shape2.userData,actors.PlayerBullet):
+                bullet = contact.shape2
+                target = contact.shape1
+            else:
+                bullet = None
+                target = None
+            if bullet:
+                bullet.userData.Destroy()
+                if target.userData != None:
+                    target.userData.Damage(10)
+                #print 'Bullet Collision!'
         for obj in self.objects:
-            obj.Update()
+            obj.PhysUpdate()
 
 class Keys(object):
     UP    = 1
@@ -363,7 +383,7 @@ class GameMode(Mode):
 
     def TutorialTowing(self,t):
         if self.parent.ship.detached:
-            self.parent.ship.SetText('Great! Now to get evolution started, lift some crates of primordial goo into the air and destroy them!',wait=0)
+            self.parent.ship.SetText('Great! Now to get evolution started, lift some crates of primordial goo into the air and destroy them!',wait=0,limit=6000)
             self.parent.ship.state = ShipStates.DESTROY_CRATES
 
     def LevelDestroyCrates(self,t):

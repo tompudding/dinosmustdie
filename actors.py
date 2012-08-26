@@ -21,12 +21,12 @@ class StaticTriangle(object):
         self.shape.density = 1
         self.shape.friction = 0.5
         self.body.CreateShape(self.shape)
-        self.Update()
+        self.PhysUpdate()
 
     def GetPos(self):
         return Point(*self.body.position)/self.physics.scale_factor
 
-    def Update(self):
+    def PhysUpdate(self):
         for i in xrange(3):
             vertex = self.shape.vertices[i]
             screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
@@ -38,6 +38,8 @@ class StaticBox(object):
     isBullet = False
     mass     = 1
     filter_group = None
+    static   = True
+    health   = 500
     def __init__(self,physics,bl,tr,tc = None):
         #Hardcode the dirt texture since right now all static things are dirt. I know I know.
         self.dead = False
@@ -52,7 +54,8 @@ class StaticBox(object):
         midpoint = (tr - bl)*0.5*physics.scale_factor
         self.bodydef.position = tuple((bl*physics.scale_factor) + midpoint)
         self.shape = self.CreateShape(midpoint)
-        self.shape.userData = self
+        if not self.static:
+            self.shape.userData = self
         if self.filter_group != None:
             self.shape.filter.groupIndex = self.filter_group
         self.bodydef.isBullet = self.isBullet
@@ -60,16 +63,22 @@ class StaticBox(object):
         self.shape.density = self.mass
         self.shape.friction = 0.7
         self.shapeI = self.body.CreateShape(self.shape)
-        self.Update()
+        self.PhysUpdate()
 
     def Destroy(self):
+        if self.static:
+            #Don't ever destroy static things
+            return
         if self.dead:
             return
         self.shape.ClearUserData()
         self.physics.world.DestroyBody(self.body)
         self.dead = True
         self.quad.Disable()
-        
+
+    def Damage(self,amount):
+        #can't damage static stuff
+        return
 
     def CreateShape(self,midpoint):
         if self.dead:
@@ -95,7 +104,7 @@ class StaticBox(object):
             return
         return self.body.angle
 
-    def Update(self):
+    def PhysUpdate(self):
         if self.dead:
             return
         if not self.visible:
@@ -111,6 +120,8 @@ class StaticBox(object):
 
 
 class DynamicBox(StaticBox):
+    static = False
+    health = 30
     def __init__(self,physics,bl,tr,tc):
         super(DynamicBox,self).__init__(physics,bl,tr,tc)
 
@@ -122,21 +133,19 @@ class DynamicBox(StaticBox):
             return
         self.quad = drawing.Quad(globals.quad_buffer,tc = tc)
 
-    def Update(self):
+    def PhysUpdate(self):
         if self.dead:
             return
         #Just set the vertices
-        
-        #bl = (Point(*self.body.GetWorldPoint(self.shape.vertices[0])))/self.physics.scale_factor
-        #tr = (Point(*self.body.GetWorldPoint(self.shape.vertices[2])))/self.physics.scale_factor
-        #tr = (Point(*self.shape.vertices[2]) + Point(*self.body.position))/self.physics.scale_factor
+
         for i,vertex in enumerate(self.shape.vertices):
             screen_coords = Point(*self.body.GetWorldPoint(vertex))/self.physics.scale_factor
             self.quad.vertex[(i+3)%4] = (screen_coords.x,screen_coords.y,10)
-        #print self.body.angle,bl
-        #print bl,tr
-        #print self.body.position
-        #self.quad.SetVertices(bl,tr,10)
+
+    def Damage(self,amount):
+        self.health -= amount
+        if self.health < 0:
+            self.Destroy()
 
 class DynamicCircle(DynamicBox):
     def CreateShape(self,midpoint):
@@ -181,9 +190,9 @@ class PlayerShip(DynamicBox):
         super(PlayerShip,self).__init__(physics,bl,tr,tc)
         self.bullets = []
         self.cooldown = 0
+        self.text_limit = None
 
     def Update(self,t = None):
-        super(PlayerShip,self).Update()
         self.t = t
         self.text.SetPos(self.parent.GetRelative(self.GetPos()))
         if self.text_start == None and t != None:
@@ -192,6 +201,8 @@ class PlayerShip(DynamicBox):
             elapsed = t - self.text_start
             if elapsed > len(self.text.text)*self.letter_duration:
                 self.text.EnableChars()
+                if self.text_limit != None and elapsed > self.text_limit:
+                    self.SetText(' ',wait=0)
             elif elapsed > 0:
                 num_enabled = int(float(elapsed)/self.letter_duration)
                 self.text.EnableChars(num_enabled)
@@ -227,7 +238,6 @@ class PlayerShip(DynamicBox):
         #    return
         for offset in Point(20,5),Point(-20,5):
             bpos = Point(*self.body.GetWorldPoint(tuple(offset*self.physics.scale_factor)))/self.physics.scale_factor
-            print bpos
             bullet = PlayerBullet(self.physics,bpos,bpos+Point(20,20),tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'blast.png')))
             #print dir(bullet.body)
             bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + (pos - bpos).unit_vector()*200)
@@ -261,7 +271,6 @@ class PlayerShip(DynamicBox):
         #then test each one to see if the point is inside it
         aabb = box2d.b2AABB()
         phys_pos = pos*self.physics.scale_factor
-        print 'Grapple',phys_pos
         #First of all make sure it's not inside us
         trans = box2d.b2XForm()
         trans.SetIdentity()
@@ -285,6 +294,13 @@ class PlayerShip(DynamicBox):
             self.contact  = None
         if not self.touching:
             return
+        #Tell the other body that it's in a joint with us so that 
+        target = self.touching.userData
+        if target == None:
+            self.touching = None
+            self.contact = None
+            return
+
         joint = box2d.b2DistanceJointDef()
         joint.Initialize(self.body,self.touching.GetBody(),self.body.GetWorldCenter(),tuple(phys_pos))
         joint.collideConnected = True
@@ -293,8 +309,10 @@ class PlayerShip(DynamicBox):
         self.grapple_quad.Enable()
         
             
-    def SetText(self,text,wait = 1000):
+    def SetText(self,text,wait = 1000,limit = None):
         self.text.SetText(text)
         self.text.EnableChars(0)
         self.text_start = None
         self.text_wait = wait
+        if limit != None:
+            self.text_limit = limit
