@@ -335,6 +335,8 @@ class GameMode(Mode):
     def MouseButtonDown(self,pos,button):
         if button == 1:
             self.parent.ship.Fire(pos)
+        if button == 3:
+            self.parent.ship.Grapple(pos)
         return False,False
 
     def TutorialMovement(self,t):

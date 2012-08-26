@@ -156,6 +156,7 @@ class PlayerShip(DynamicBox):
     max_shoot = 0.5*math.pi
     min_shoot = 1.5*math.pi
     max_distance = 300
+    max_grapple  = 175
     mass      = 3
     filter_group = -1
     def __init__(self,parent,physics,bl,tr,tc):
@@ -208,6 +209,36 @@ class PlayerShip(DynamicBox):
             if len(self.bullets) > 30:
                 bullet = self.bullets.pop(0)
                 bullet.Destroy()
+
+    def Grapple(self,pos):
+        diff = pos - self.GetPos()
+        distance,angle = cmath.polar(complex(diff.x,diff.y))
+        angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
+        #0 = pi*2 is straight ahead, pi is behind.
+        #so 0.75 pi to 1.25 pi is allowed
+        if not (angle <= self.min_shoot and angle >= self.max_shoot):
+            return
+        if distance > self.max_grapple:
+            return
+
+        #We need to determine if this point is in any objects...
+        #We'll create a small AABB around the point, and get the list of potentially intersecting shapes,
+        #then test each one to see if the point is inside it
+        aabb = box2d.b2AABB()
+        phys_pos = pos*self.physics.scale_factor
+        print 'Grapple',phys_pos
+        aabb.lowerBound.Set(phys_pos.x-0.1,phys_pos.y-0.1)
+        aabb.upperBound.Set(phys_pos.x+0.1,phys_pos.y+0.1)
+        (count,shapes) = self.physics.world.Query(aabb,10)
+        for shape in shapes:
+            trans = box2d.b2XForm()
+            trans.SetIdentity()
+            p = phys_pos - Point(*shape.GetBody().position)
+            if shape.TestPoint(trans,tuple(p)):
+                touching = shape
+                break
+        else:
+            touching = None
             
     def SetText(self,text,wait = 1000):
         self.text.SetText(text)
