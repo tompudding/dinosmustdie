@@ -302,14 +302,14 @@ class Keys(object):
 
 class GameMode(Mode):
     def __init__(self,parent):
-        self.parent = parent
-        self.thrust = None
-        self.rotate = None
-        self.pi2 = math.pi/2
-        self.ooze_boxes = []
-        self.up_keys = [0x111,ord('w')]
-        self.left_keys = [0x114,ord('a')]
-        self.right_keys = [0x113,ord('d')]
+        self.parent            = parent
+        self.thrust            = None
+        self.rotate            = None
+        self.pi2               = math.pi/2
+        self.ooze_boxes        = []
+        self.up_keys           = [0x111,ord('w')]
+        self.left_keys         = [0x114,ord('a')]
+        self.right_keys        = [0x113,ord('d')]
         self.parent.ship.SetText('Use the W and D keys to rotate the ship, and A to provide thrust') 
         self.parent.ship.state = ShipStates.TUTORIAL_MOVEMENT
         self.tutorial_handlers = {ShipStates.TUTORIAL_MOVEMENT : self.TutorialMovement,
@@ -318,7 +318,13 @@ class GameMode(Mode):
                                   ShipStates.TUTORIAL_TOWING   : self.TutorialTowing,
                                   ShipStates.DESTROY_CRATES    : self.LevelDestroyCrates}
         self.all_time_key_mask = 0
-        self.key_mask = 0
+        self.key_mask          = 0
+        self.num_boxes         = 3
+        self.skip_text         = ui.TextBox(parent = globals.screen_root,
+                                            bl     = Point(0.8,0.8),
+                                            tr     = Point(1,1)    ,
+                                            text   = 'Press Q to skip tutorial',
+                                            scale  = 2)
         
         #Add in 15 ooze boxes
         for i in xrange(15):
@@ -345,6 +351,8 @@ class GameMode(Mode):
         if key in self.right_keys:
             self.all_time_key_mask |= Keys.RIGHT
             self.key_mask          |= Keys.RIGHT
+        if key == ord('q'):
+            self.EndTutorial()
         #elif key == 0x
 
     def KeyUp(self,key):
@@ -383,11 +391,32 @@ class GameMode(Mode):
 
     def TutorialTowing(self,t):
         if self.parent.ship.detached:
-            self.parent.ship.SetText('Great! Now to get evolution started, lift some crates of primordial goo into the air and destroy them!',wait=0,limit=6000)
-            self.parent.ship.state = ShipStates.DESTROY_CRATES
+            self.EndTutorial()
+
+    def EndTutorial(self):
+        self.parent.ship.SetText('Great! Now to get evolution started, lift some crates of primordial goo into the air and destroy them!',wait=0,limit=6000)
+        self.skip_text.Disable()
+        self.parent.ship.state = ShipStates.DESTROY_CRATES
 
     def LevelDestroyCrates(self,t):
         pass
+
+    def BoxDestroyed(self,box):
+        p = box.GetPos()
+        target = 750
+        if not p:
+            #Not sure when this would happen
+            return
+        if p.y < target:
+            self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
+            return
+        self.num_boxes -= 1
+        if self.num_boxes > 0:
+            self.parent.ship.SetText('Good! %d boxes left!' % self.num_boxes,wait=0,limit=4000)
+        else:
+            pass
+                                     
+            
 
     def Update(self,t):
         self.parent.ship.Update(t)
