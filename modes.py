@@ -114,15 +114,16 @@ class Keys(object):
     ALL   = UP | LEFT | RIGHT
 
 class ShipStates(object):
-    TUTORIAL_MOVEMENT = 0
-    TUTORIAL_SHOOTING = 1
-    TUTORIAL_GRAPPLE  = 2
-    TUTORIAL_TOWING   = 3
-    DESTROY_CRATES    = 4
-    WAIT_SPACE        = 5
-    DINO_TEXT         = 6
-    DESTROY_DINOS_IMMUNE = 7
-    DESTROY_DINOS     = 8
+    TUTORIAL_MOVEMENT    = 0
+    TUTORIAL_SHOOTING    = 1
+    TUTORIAL_BEAM        = 2
+    TUTORIAL_GRAPPLE     = 3
+    TUTORIAL_TOWING      = 4
+    DESTROY_CRATES       = 5
+    WAIT_SPACE           = 6
+    DINO_TEXT            = 7
+    DESTROY_DINOS_IMMUNE = 8
+    DESTROY_DINOS        = 9
     TUTORIAL = set([TUTORIAL_MOVEMENT,TUTORIAL_SHOOTING,TUTORIAL_GRAPPLE,TUTORIAL_TOWING])
 
 class GameMode(Mode):
@@ -139,6 +140,7 @@ class GameMode(Mode):
         self.parent.ship.state = ShipStates.TUTORIAL_MOVEMENT
         self.tutorial_handlers = {ShipStates.TUTORIAL_MOVEMENT : self.TutorialMovement,
                                   ShipStates.TUTORIAL_SHOOTING : self.TutorialShooting,
+                                  ShipStates.TUTORIAL_BEAM     : self.TutorialBeam,
                                   ShipStates.TUTORIAL_GRAPPLE  : self.TutorialGrapple,
                                   ShipStates.TUTORIAL_TOWING   : self.TutorialTowing,
                                   ShipStates.DESTROY_CRATES    : self.LevelDestroyCrates,
@@ -222,6 +224,12 @@ class GameMode(Mode):
 
     def TutorialShooting(self,t):
         if self.parent.ship.fired:
+            self.parent.ship.SetText('Fire your beam with space bar',wait=0)
+            self.parent.ship.state = ShipStates.TUTORIAL_BEAM
+            self.parent.ship.beam_fired = False
+   
+    def TutorialBeam(self,t):
+        if self.parent.ship.beam_fired:
             self.parent.ship.SetText('Grapple by right-clicking on a target behind your ship',wait=0)
             self.parent.ship.state = ShipStates.TUTORIAL_GRAPPLE
             self.parent.ship.grappled = False
@@ -259,18 +267,18 @@ class GameMode(Mode):
             #We don't care
             return
         #temporary cheat:
-        if 0:
-            p = box.GetPos()
-            target = 750
-            if not p:
-                #Not sure when this would happen
-                return
-            if p.y < target:
-                self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
-                return
-            self.num_boxes -= 1
-            if self.num_boxes > 0:
-                self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
+        #if 0:
+        p = box.GetPos()
+        target = 750
+        if not p:
+            #Not sure when this would happen
+            return
+        if p.y < target:
+            self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
+            return
+        self.num_boxes -= 1
+        if self.num_boxes > 0:
+            self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
         else:
             self.parent.ship.SetText('Great. Press <space> to wait 3 billion years for life to evolve',wait=0)
             time_taken = self.t - self.start_task_time

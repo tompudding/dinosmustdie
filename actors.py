@@ -297,6 +297,7 @@ class PlayerShip(ShootingThing):
         self.beam_quad.Disable()
         self.beam = False
         self.beam_power = 0
+        self.beam_fired = False
         self.last_beam_update = 0
         self.grapple_quad.Disable()
         self.letter_duration = 30
@@ -362,6 +363,7 @@ class PlayerShip(ShootingThing):
                 self.StopBeam()
 
         if self.beam:
+            self.beam_fired = True
             self.beam_quad.Enable()
             angle = self.GetAngle()
             unit_vector = cmath.rect(1000,angle + math.pi/2)
