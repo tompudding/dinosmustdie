@@ -208,7 +208,7 @@ class GameView(ui.RootElement):
         #self.atlas.TransformCoords('starfield.png',backdrop_tc) 
         #self.backdrop   = drawing.Quad(globals.quad_buffer,tc = backdrop_tc)
         self.backdrop_texture = drawing.texture.Texture('starfield.png')
-        self.ground_texture   = drawing.texture.Texture(os.path.join('sprites','dirt.png'))
+        self.ground_texture   = drawing.texture.Texture('dirt.png')
         self.backdrop  = drawing.Quad(globals.backdrop_buffer,tc = numpy.array([(0,0),(0,4),(5,4),(5,0)]))
         self.backdrop.SetVertices(Point(0,0),
                                   self.absolute.size,
