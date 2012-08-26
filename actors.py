@@ -169,14 +169,16 @@ class PlayerShip(DynamicBox):
                                  text     = ' ',
                                  textType = drawing.texture.TextTypes.WORLD_RELATIVE,
                                  scale    = 2)
+        self.grapple_quad = drawing.Quad(globals.quad_buffer,tc = parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'grapple.png')))
+        self.grapple_quad.Disable()
         self.letter_duration = 30
         self.text_start = None
-        super(PlayerShip,self).__init__(physics,bl,tr,tc)
-        self.bullets = []
         self.fired = False
         self.joint = False
         self.grappled = False
         self.detached = False
+        super(PlayerShip,self).__init__(physics,bl,tr,tc)
+        self.bullets = []
 
     def Update(self,t = None):
         super(PlayerShip,self).Update()
@@ -190,6 +192,18 @@ class PlayerShip(DynamicBox):
             elif elapsed > 0:
                 num_enabled = int(float(elapsed)/self.letter_duration)
                 self.text.EnableChars(num_enabled)
+
+        #Set the vertices of the grapple_quad
+        if not self.grappled:
+            return
+        #It's not quite as simple as converting physics vertices to quad vertices since the physics engine
+        #isn't keeping track of the vertices we want to use. Instead get them from the bodies in question
+        for i,(body,offset) in enumerate(((self.body,Point(-0.2,0)),
+                                          (self.body,Point(0.2,0)),
+                                          (self.touching.GetBody(),self.contact + Point(-0.2,0)),
+                                          (self.touching.GetBody(),self.contact + Point(0.2,0)))):
+            screen_coords = Point(*body.GetWorldPoint(tuple(offset)))/self.parent.physics.scale_factor
+            self.grapple_quad.vertex[i] = (screen_coords.x,screen_coords.y,10)
 
     def Fire(self,pos):
         diff = pos - self.GetPos()
@@ -218,6 +232,10 @@ class PlayerShip(DynamicBox):
             self.physics.world.DestroyJoint(self.joint)
             self.joint = None
             self.detached = True
+            self.grapple_quad.Disable()
+            self.touching = None
+            self.contact = None
+            self.grappled = False
             return
         diff = pos - self.GetPos()
         distance,angle = cmath.polar(complex(diff.x,diff.y))
@@ -243,19 +261,20 @@ class PlayerShip(DynamicBox):
             trans.SetIdentity()
             p = phys_pos - Point(*shape.GetBody().position)
             if shape.TestPoint(trans,tuple(p)):
-                touching = shape
-                contact  = p
+                self.touching = shape
+                self.contact  = p
                 break
         else:
-            touching = None
-            contact  = None
-        if not touching:
+            self.touching = None
+            self.contact  = None
+        if not self.touching:
             return
         joint = box2d.b2DistanceJointDef()
-        joint.Initialize(self.body,touching.GetBody(),self.body.GetWorldCenter(),tuple(phys_pos))
+        joint.Initialize(self.body,self.touching.GetBody(),self.body.GetWorldCenter(),tuple(phys_pos))
         joint.collideConnected = True
         self.joint = self.physics.world.CreateJoint(joint)
         self.grappled = True
+        self.grapple_quad.Enable()
         
             
     def SetText(self,text,wait = 1000):
