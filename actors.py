@@ -63,6 +63,8 @@ class StaticBox(object):
         self.shape.density = self.mass
         self.shape.friction = 0.7
         self.shapeI = self.body.CreateShape(self.shape)
+        self.child_joint = None
+        self.parent_joint = None
         self.PhysUpdate()
 
     def Destroy(self):
@@ -71,6 +73,10 @@ class StaticBox(object):
             return
         if self.dead:
             return
+        if self.parent_joint:
+            #We're attached, so get rid of that before killing us
+            self.parent_joint.UnGrapple()
+            self.parent_joint = None
         self.shape.ClearUserData()
         self.physics.world.DestroyBody(self.body)
         self.dead = True
@@ -246,15 +252,21 @@ class PlayerShip(DynamicBox):
                 bullet = self.bullets.pop(0)
                 bullet.Destroy()
 
+    def UnGrapple(self):
+        self.physics.world.DestroyJoint(self.joint)
+        self.joint = None
+        self.detached = True
+        self.grapple_quad.Disable()
+        self.touching = None
+        self.contact = None
+        self.grappled = False
+        if self.child_joint:
+            self.child_joint.parent_joint = None
+            self.child_joint = None
+
     def Grapple(self,pos):
         if self.joint:
-            self.physics.world.DestroyJoint(self.joint)
-            self.joint = None
-            self.detached = True
-            self.grapple_quad.Disable()
-            self.touching = None
-            self.contact = None
-            self.grappled = False
+            self.UnGrapple()
             return
         diff = pos - self.GetPos()
         distance,angle = cmath.polar(complex(diff.x,diff.y))
@@ -300,6 +312,9 @@ class PlayerShip(DynamicBox):
             self.touching = None
             self.contact = None
             return
+
+        target.parent_joint = self
+        self.child_joint    = target
 
         joint = box2d.b2DistanceJointDef()
         joint.Initialize(self.body,self.touching.GetBody(),self.body.GetWorldCenter(),tuple(phys_pos))
