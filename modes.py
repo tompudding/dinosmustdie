@@ -6,6 +6,7 @@ from globals.types import Point
 import Box2D as box2d
 import actors
 import game_view
+import sys
 
 class IntroStages(object):
     STARTED  = 0
@@ -79,6 +80,7 @@ class Intro(Mode):
 
     def Startup(self,t):
         self.menu_text.EnableChars(0)
+        self.parent.ship.Disable()
         return IntroStages.TEXT
 
     def TextDraw(self,t):
@@ -95,6 +97,7 @@ class Intro(Mode):
         """When the view has finished scrolling, marry it to the ship"""
         self.parent.viewpos.Follow(t,self.parent.ship)
         self.menu_text.Disable()
+        self.parent.ship.Enable()
     
     def Scroll(self,t):
         pass
@@ -118,7 +121,8 @@ class ShipStates(object):
     DESTROY_CRATES    = 4
     WAIT_SPACE        = 5
     DINO_TEXT         = 6
-    DESTROY_DINOS     = 7
+    DESTROY_DINOS_IMMUNE = 7
+    DESTROY_DINOS     = 8
     TUTORIAL = set([TUTORIAL_MOVEMENT,TUTORIAL_SHOOTING,TUTORIAL_GRAPPLE,TUTORIAL_TOWING])
 
 class GameMode(Mode):
@@ -138,15 +142,19 @@ class GameMode(Mode):
                                   ShipStates.TUTORIAL_GRAPPLE  : self.TutorialGrapple,
                                   ShipStates.TUTORIAL_TOWING   : self.TutorialTowing,
                                   ShipStates.DESTROY_CRATES    : self.LevelDestroyCrates,
+                                  ShipStates.DESTROY_DINOS_IMMUNE : self.LevelDestroyDinos,
                                   ShipStates.DESTROY_DINOS     : self.LevelDestroyDinos}
+        self.parent.ship.Disable()
         self.all_time_key_mask = 0
         self.key_mask          = 0
-        self.num_boxes         = 3
+        self.num_boxes         = 2
         self.skip_text         = ui.TextBox(parent = globals.screen_root,
                                             bl     = Point(0.8,0.8),
                                             tr     = Point(1,1)    ,
                                             text   = 'Press Q to skip tutorial',
                                             scale  = 2)
+        self.t = 0
+        self.start_task_time = 0
         
         #Add in 15 ooze boxes
         for i in xrange(15):
@@ -225,6 +233,7 @@ class GameMode(Mode):
 
     def EndTutorial(self):
         self.parent.ship.SetText('Great! Now to get evolution started, lift some crates of primordial goo into the air and destroy them!',wait=0,limit=6000)
+        self.start_task_time = self.t
         self.skip_text.Disable()
         self.parent.ship.state = ShipStates.DESTROY_CRATES
 
@@ -239,26 +248,37 @@ class GameMode(Mode):
             #We don't care
             return
         #temporary cheat:
-        if 0:
-            p = box.GetPos()
-            target = 750
-            if not p:
-                #Not sure when this would happen
-                return
-            if p.y < target:
-                self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
-                return
-            self.num_boxes -= 1
-            if self.num_boxes > 0:
-                self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
+        #if 0:
+        p = box.GetPos()
+        target = 750
+        if not p:
+            #Not sure when this would happen
+            return
+        if p.y < target:
+            self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
+            return
+        self.num_boxes -= 1
+        if self.num_boxes > 0:
+            self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
         else:
             self.parent.ship.SetText('Great. Press <space> to wait 3 billion years for life to evolve',wait=0)
+            time_taken = self.t - self.start_task_time
+            if time_taken < 2000:
+                bonus = 1000 + 2000 - time_taken
+            elif time_taken < 40000:
+                bonus = 500 + ((40000 - time_taken)/2)
+            elif time_taken < 60000:
+                bonus = 100
+            else:
+                bonus = 11
+            self.parent.ship.AddScore(bonus)
             self.parent.ship.state = ShipStates.WAIT_SPACE
                                      
             
 
     def Update(self,t):
         self.parent.ship.Update(t)
+        self.t = t
         try:
             self.tutorial_handlers[self.parent.ship.state](t)
         except KeyError:
@@ -310,8 +330,9 @@ class Titles(Mode):
             #Lets add some dinosaurs
             for i in xrange(20):
                 self.parent.AddTrex()
-            self.parent.ship.state = ShipStates.DESTROY_DINOS
+            self.parent.ship.state = ShipStates.DESTROY_DINOS_IMMUNE
             self.parent.mode = self.parent.game_mode
+            self.parent.ship.Enable()
 
     def Startup(self,t):
         self.view_target = Point(self.parent.ship.GetPos().x-globals.screen.x*0.5,globals.screen.y)
@@ -319,6 +340,7 @@ class Titles(Mode):
                                       t,
                                       rate = 0.4,
                                       callback = self.Scrolled)
+        self.parent.ship.Disable()
         return TitleStages.WAIT
 
     def Wait(self,t):
@@ -371,6 +393,7 @@ class Titles(Mode):
         self.parent.viewpos.Follow(t,self.parent.ship)
         self.blurb_text.Delete()
         self.title_text.Delete()
+        self.parent.ship.state = ShipStates.DESTROY_DINOS
 
     def KeyDown(self,key):
         #if key in [13,27,32]: #return, escape, space
@@ -382,9 +405,90 @@ class Titles(Mode):
     def MouseButtonDown(self,pos,button):
         self.KeyDown(0)
         return False,False
-
-
-
     
     def Draw(self):
         pass
+
+class GameOver(Mode):
+    win_text = "Congratulations! You have defeated the dinosaurs, and now you're just a few thousand short millennia away from some tasty {gloop}, Hooray!. Total score = %d\n\n\n   Press any key to exit".format(gloop = gloop_name)
+    fail_text = "You failed to destroy the dinosaurs, and the universe's last hope of getting a stable {gloop} source is lost. In addition you are dead. Total score = %d\n\n\n   Press any key to exit".format(gloop = gloop_name)
+    def __init__(self,parent,win,score):
+        self.parent          = parent
+        self.win             = win
+        self.score           = score
+        self.start           = None
+        self.skipped_text    = False
+        self.continued       = False
+        self.letter_duration = 20
+        self.blurb           = self.win_text if self.win else self.fail_text
+        self.blurb           = self.blurb % self.score
+        self.blurb_text      = None
+        self.stage           = TitleStages.STARTED
+        self.handlers        = {TitleStages.STARTED : self.Startup,
+                                TitleStages.TEXT    : self.TextDraw,
+                                TitleStages.SCROLL  : self.Wait,
+                                TitleStages.WAIT    : self.Wait}
+        self.parent.Pause()
+        self.parent.ship.Disable()
+
+    def Update(self,t):
+        if self.start == None:
+            self.start = t
+        self.elapsed = t - self.start
+        self.stage = self.handlers[self.stage](t)
+        if self.stage == TitleStages.COMPLETE:
+            raise sys.exit('Come again soon!')
+
+    def Startup(self,t):
+        self.view_target = Point(self.parent.ship.GetPos().x-globals.screen.x*0.5,globals.screen.y)
+        self.parent.viewpos.SetTarget(self.view_target,
+                                      t,
+                                      rate = 0.4,
+                                      callback = self.Scrolled)
+        return TitleStages.WAIT
+
+    def Wait(self,t):
+        return self.stage
+
+    def SkipText(self):
+        if self.blurb_text:
+            self.skipped_text = True
+            self.blurb_text.EnableChars()
+
+    def Scrolled(self,t):
+        print 'Scrolled!'
+        bl = self.parent.GetRelative(self.view_target)
+        tr = bl + self.parent.GetRelative(globals.screen)
+        self.blurb_text = ui.TextBox(parent = self.parent,
+                                     bl     = bl         ,
+                                     tr     = tr         ,
+                                     text   = self.blurb ,
+                                     textType = drawing.texture.TextTypes.WORLD_RELATIVE,
+                                     scale  = 3)
+
+        self.start = t
+        self.blurb_text.EnableChars(0)
+        self.stage = TitleStages.TEXT
+
+    def TextDraw(self,t):
+        if not self.skipped_text:
+            if self.elapsed < len(self.blurb_text.text)*self.letter_duration:
+                num_enabled = int(self.elapsed/self.letter_duration)
+                self.blurb_text.EnableChars(num_enabled)
+            else:
+                self.skipped_text = True
+        elif self.continued:
+            return TitleStages.COMPLETE
+        return TitleStages.TEXT
+
+
+    def KeyDown(self,key):
+        #if key in [13,27,32]: #return, escape, space
+        if not self.skipped_text:
+            self.SkipText()
+        else:
+            self.continued = True
+
+    def MouseButtonDown(self,pos,button):
+        self.KeyDown(0)
+        return False,False

@@ -232,6 +232,7 @@ class Trex(ShootingThing):
     def Damage(self,amount):
         if self.dead:
             return
+        self.parent.ship.AddScore(7)
         if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
                                                modes.ShipStates.TUTORIAL_SHOOTING,
                                                modes.ShipStates.TUTORIAL_GRAPPLE,
@@ -292,6 +293,18 @@ class PlayerShip(ShootingThing):
         self.bullets = []
         self.cooldown = 0
         self.text_limit = None
+        self.health_text = ui.TextBox(parent = globals.screen_root,
+                                      bl     = Point(0,0.9),
+                                      tr     = Point(0.2,0.95)    ,
+                                      text   = ' ',
+                                      scale  = 2)
+        self.score_text = ui.TextBox(parent = globals.screen_root,
+                                      bl     = Point(0,0.85),
+                                      tr     = Point(0.2,0.9)    ,
+                                      text   = ' ',
+                                      scale  = 2)
+        self.SetHealth(350)
+        self.SetScore(0)
 
     def Update(self,t = None):
         self.t = t
@@ -394,7 +407,6 @@ class PlayerShip(ShootingThing):
         self.joint = self.physics.world.CreateJoint(joint)
         self.grappled = True
         self.grapple_quad.Enable()
-        
             
     def SetText(self,text,wait = 1000,limit = None):
         self.text.SetText(text)
@@ -403,3 +415,34 @@ class PlayerShip(ShootingThing):
         self.text_wait = wait
         if limit != None:
             self.text_limit = limit
+
+    def SetHealth(self,value):
+        if value < 0:
+            value = 0
+        self.health = value
+        self.health_text.SetText('health: %d' % self.health)
+
+    def SetScore(self,value):
+        self.score = value
+        self.score_text.SetText('score: %d' % self.score)
+
+    def AddScore(self,value):
+        self.SetScore(self.score + value)
+
+    def Damage(self,amount):
+        if self.dead:
+            return
+        if globals.current_view.ship.state != modes.ShipStates.DESTROY_DINOS:
+            return
+        self.SetHealth(self.health - amount)
+        if self.health <= 0:
+            #globals.current_view.mode.BoxDestroyed(self)
+            self.parent.mode = modes.GameOver(self.parent,win = False,score = self.score)
+
+    def Disable(self):
+        self.health_text.Disable()
+        self.score_text.Disable()
+
+    def Enable(self):
+        self.health_text.Enable()
+        self.score_text.Enable()

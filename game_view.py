@@ -213,6 +213,7 @@ class GameView(ui.RootElement):
         self.backdrop.SetVertices(Point(0,0),
                                   self.absolute.size,
                                   drawing.constants.DrawLevels.grid)
+        self.paused = False
         self.viewpos = Viewpos(Point(globals.screen.x*5,globals.screen.y))
         self.t = None
         self.physics = Physics(self)
@@ -287,6 +288,7 @@ class GameView(ui.RootElement):
             
         
         self.mode = modes.Intro(self)
+        #self.mode = modes.GameOver(self,False,7)
         #self.game_mode = modes.GameMode(self)
         #self.mode = modes.Titles(self)
 
@@ -362,16 +364,21 @@ class GameView(ui.RootElement):
     def Update(self,t):
         if self.t == None:
             self.t = t
-        self.physics.Step()
+        if not self.paused:
+            self.physics.Step()
 
         self.viewpos.Update(t)
         if self.mode:
             self.mode.Update(t)
 
-        for enemy in self.enemies:
-            enemy.Update(t)
+        if not self.paused:
+            for enemy in self.enemies:
+                enemy.Update(t)
 
         self.Draw()
+
+    def Pause(self):
+        self.paused = True
 
     def GetFloorHeight(self,x):
         for i,(pos,height) in enumerate(self.land_heights):
@@ -400,3 +407,6 @@ class GameView(ui.RootElement):
             if trex is self.enemies[i]:
                 del self.enemies[i]
                 break
+        self.ship.AddScore(129)
+        if len(self.enemies) == 0:
+            self.mode = modes.GameOver(self,win = True,score = self.ship.score)
