@@ -306,7 +306,7 @@ class TitleStages(object):
 
 
 class Titles(Mode):
-    blurb = "After waiting for 3 billion years you starting to seriously fancy some gloopy {gloop}. Unfortunately for you (and the galaxy) you have overslept by 100 million years and without your guiding tentacle Dinosaurs have risen to dominate the planet. Dinosaurs *hate* {gloop}, and so...".format(gloop = gloop_name)
+    blurb = "After waiting for 3 billion years you are starting to seriously fancy some gloopy {gloop}. Unfortunately for you (and the galaxy) you have overslept by 100 million years and without your guiding tentacle Dinosaurs have risen to dominate the planet. Dinosaurs *hate* {gloop}, and so...".format(gloop = gloop_name)
     def __init__(self,parent):
         self.parent          = parent
         self.start           = None
