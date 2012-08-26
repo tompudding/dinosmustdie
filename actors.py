@@ -455,6 +455,7 @@ class PlayerShip(ShootingThing):
         self.SetHealth(self.health - amount)
         globals.sounds.hurt.play()
         if self.health <= 0:
+            globals.sounds.player_die.play()
             #globals.current_view.mode.BoxDestroyed(self)
             self.parent.mode = modes.GameOver(self.parent,win = False,score = self.score)
 
