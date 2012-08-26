@@ -172,6 +172,7 @@ class PlayerShip(DynamicBox):
         self.text_start = None
         super(PlayerShip,self).__init__(physics,bl,tr,tc)
         self.bullets = []
+        self.fired = False
 
     def Update(self,t = None):
         super(PlayerShip,self).Update()
@@ -194,6 +195,7 @@ class PlayerShip(DynamicBox):
         #so 0.75 pi to 1.25 pi is disallowed
         if angle <= self.min_shoot and angle >= self.max_shoot:
             return
+        self.fired = True
         #if distance >= self.max_distance:
         #    return
         for offset in Point(20,5),Point(-20,5):

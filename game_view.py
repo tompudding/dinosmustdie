@@ -341,9 +341,12 @@ class GameMode(Mode):
         if self.all_time_key_mask == Keys.ALL:
             self.parent.ship.SetText('Aim with the mouse and left click to shoot',wait=0)
             self.parent.ship.state = ShipStates.TUTORIAL_SHOOTING
+            self.parent.ship.fired = False
 
     def TutorialShooting(self,t):
-        pass
+        if self.parent.ship.fired:
+            self.parent.ship.SetText('Grapple by right-clicking on a target behind your ship',wait=0)
+            self.parent.ship.state = ShipStates.TUTORIAL_TOWING
 
     def TutorialTowing(self,t):
         pass
