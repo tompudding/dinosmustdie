@@ -8,7 +8,7 @@ pygame.mixer.init()
 class Sounds(object):
     def __init__(self):
         for filename in glob.glob('*.wav'):
-            print filename
+            #print filename
             sound = pygame.mixer.Sound(filename)
             sound.set_volume(0.4)
             name = os.path.splitext(filename)[0]

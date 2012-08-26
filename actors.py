@@ -379,7 +379,6 @@ class PlayerShip(ShootingThing):
             #Are we damaging anybody
             for enemy in self.parent.enemies + self.parent.game_mode.ooze_boxes:
                 enemy_pos = enemy.GetPos()
-                print enemy_pos
                 signs = []
                 for a,b in ((left_part,left_distant),(right_part,right_distant)):
                     sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
