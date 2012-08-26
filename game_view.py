@@ -1,10 +1,11 @@
 from OpenGL.GL import *
-import random,numpy,cmath,math
+import random,numpy,cmath,math,pygame
 
 import ui,globals,drawing,os,copy
 from globals.types import Point
 import Box2D as box2d
 import actors
+import modes
 
 class Viewpos(object):
     follow_threshold = 0
@@ -28,14 +29,17 @@ class Viewpos(object):
 
     def SetTarget(self,point,t,rate=2,callback = None):
         #Don't fuck with the view if the player is trying to control it
-        self.target = point
+        self.follow        = None
+        self.follow_start  = 0
+        self.follow_locked = False
+        self.target        = point
         self.target_change = self.target - self.pos
         self.start_point   = self.pos
         self.start_time    = t
         self.duration      = self.target_change.length()/rate
-        self.callback = callback
+        self.callback      = callback
         if self.duration < 200:
-            self.duration = 200
+            self.duration  = 200
         self.target_time   = self.start_time + self.duration
 
     def Follow(self,t,actor):
@@ -85,109 +89,6 @@ class Viewpos(object):
                 partial = partial*partial*(3 - 2*partial) #smoothstep
                 self.pos = (self.start_point + (self.target_change*partial)).to_int()
 
-class IntroStages(object):
-    STARTED  = 0
-    TEXT     = 1
-    SCROLL   = 2
-    COMPLETE = 3
-
-class ShipStates(object):
-    TUTORIAL_MOVEMENT = 0
-    TUTORIAL_SHOOTING = 1
-    TUTORIAL_GRAPPLE  = 2
-    TUTORIAL_TOWING   = 3
-    DESTROY_CRATES    = 4
-
-gloop_name = 'Mar Might'
-
-class Mode(object):
-    """ Abstract base class to represent game modes """
-    def __init__(self,parent):
-        self.parent = parent
-    
-    def KeyDown(self,key):
-        pass
-    
-    def KeyUp(self,key):
-        pass
-
-    def MouseButtonDown(self,key):
-        return False,False
-
-    def Update(self,t):
-        pass
-
-class Intro(Mode):
-    text = "The universe runs on a gloopy black yeast extract known as {gloop}. Farming it is difficult, but scientists postulate that a hypothetical species known as humans may be the only creature in the universe able to withstand {gloop}'s addictiveness enough to create it on an industrial scale.\n\n  Level 1 - Create 10 kilotons of {gloop}\n     Subgoal 1 - Use primordial ooze to evolve the disgusting species \"Humans\"\n\n\n                   Press any key to continue".format(gloop = gloop_name)
-    def __init__(self,parent):
-        self.stage  = IntroStages.STARTED
-        self.parent = parent
-        bl = Point(0.5,0.125)
-        self.letter_duration = 20
-        self.start = None
-        self.menu_text = ui.TextBox(parent   = parent,
-                                    bl       = bl,
-                                    tr       = bl + Point(0.1,0.125),
-                                    text     = self.text,
-                                    textType = drawing.texture.TextTypes.WORLD_RELATIVE,
-                                    scale    = 3)
-        self.handlers = {IntroStages.STARTED : self.Startup,
-                         IntroStages.TEXT    : self.TextDraw,
-                         IntroStages.SCROLL  : self.Scroll}
-        self.skipped_text = False
-        self.continued = False
-
-    def SkipText(self):
-        self.skipped_text = True
-        self.menu_text.EnableChars()
-
-    def KeyDown(self,key):
-        #if key in [13,27,32]: #return, escape, space
-        if not self.skipped_text:
-            self.SkipText()
-        else:
-            self.continued = True
-
-    def MouseButtonDown(self,pos,button):
-        self.KeyDown(0)
-        return False,False
-
-    def Update(self,t):
-        """For now, just scroll the background a bit"""
-        if self.start == None:
-            self.start = t
-        self.elapsed = t - self.start
-        self.stage = self.handlers[self.stage](t)
-        if self.stage == IntroStages.COMPLETE:
-            self.parent.mode = GameMode(self.parent)
-            #self.parent.mode = None
-
-    def Startup(self,t):
-        self.menu_text.EnableChars(0)
-        return IntroStages.TEXT
-
-    def TextDraw(self,t):
-        if not self.skipped_text and self.elapsed < len(self.menu_text.text)*self.letter_duration:
-            num_enabled = int(self.elapsed/self.letter_duration)
-            self.menu_text.EnableChars(num_enabled)
-        elif self.continued:
-            self.parent.viewpos.SetTarget(self.parent.ship.GetPos()-(globals.screen*0.5),t,rate = 0.4,callback = self.Scrolled)
-            #self.parent.viewpos.Follow(t,self.parent.ship)
-            return IntroStages.COMPLETE
-        return IntroStages.TEXT
-
-    def Scrolled(self,t):
-        """When the view has finished scrolling, marry it to the ship"""
-        self.parent.viewpos.Follow(t,self.parent.ship)
-        self.menu_text.Disable()
-    
-    def Scroll(self,t):
-        pass
-#        if not self.parent.viewpos.HasTarget():
-#            self.menu_text.Disable()
-#            return IntroStages.COMPLETE
-#        else:
-#            return IntroStages.SCROLL
 
 class fwContactPoint:
     """
@@ -294,154 +195,11 @@ class Physics(object):
         for obj in self.objects:
             obj.PhysUpdate()
 
-class Keys(object):
-    UP    = 1
-    LEFT  = 2
-    RIGHT = 4
-    ALL   = UP | LEFT | RIGHT
-
-class GameMode(Mode):
-    def __init__(self,parent):
-        self.parent            = parent
-        self.thrust            = None
-        self.rotate            = None
-        self.pi2               = math.pi/2
-        self.ooze_boxes        = []
-        self.up_keys           = [0x111,ord('w')]
-        self.left_keys         = [0x114,ord('a')]
-        self.right_keys        = [0x113,ord('d')]
-        self.parent.ship.SetText('Use the W and D keys to rotate the ship, and A to provide thrust') 
-        self.parent.ship.state = ShipStates.TUTORIAL_MOVEMENT
-        self.tutorial_handlers = {ShipStates.TUTORIAL_MOVEMENT : self.TutorialMovement,
-                                  ShipStates.TUTORIAL_SHOOTING : self.TutorialShooting,
-                                  ShipStates.TUTORIAL_GRAPPLE  : self.TutorialGrapple,
-                                  ShipStates.TUTORIAL_TOWING   : self.TutorialTowing,
-                                  ShipStates.DESTROY_CRATES    : self.LevelDestroyCrates}
-        self.all_time_key_mask = 0
-        self.key_mask          = 0
-        self.num_boxes         = 3
-        self.skip_text         = ui.TextBox(parent = globals.screen_root,
-                                            bl     = Point(0.8,0.8),
-                                            tr     = Point(1,1)    ,
-                                            text   = 'Press Q to skip tutorial',
-                                            scale  = 2)
-        
-        #Add in 15 ooze boxes
-        for i in xrange(15):
-            bl = Point(random.random()*self.parent.absolute.size.x*0.9,
-                       self.parent.max_floor_height + random.random()*400)
-            self.ooze_boxes.append( actors.DynamicBox(self.parent.physics,
-                                                      bl = bl,
-                                                      tr = bl + Point(50,50),
-                                                      tc = parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'crate.png'))) )
-                                               
-            
-        
-    def KeyDown(self,key):
-        
-        #if key in [13,27,32]: #return, escape, space
-        if key in self.up_keys:
-            #Apply force to the ship
-            self.thrust = 2100
-            self.all_time_key_mask |= Keys.UP
-            self.key_mask          |= Keys.UP
-        if key in self.left_keys:
-            self.all_time_key_mask |= Keys.LEFT
-            self.key_mask          |= Keys.LEFT
-        if key in self.right_keys:
-            self.all_time_key_mask |= Keys.RIGHT
-            self.key_mask          |= Keys.RIGHT
-        if key == ord('q'):
-            self.EndTutorial()
-        #elif key == 0x
-
-    def KeyUp(self,key):
-        if key in self.up_keys:
-            self.thrust = None
-            self.key_mask          &= ~Keys.UP
-        if key in self.left_keys:
-            self.key_mask          &= ~Keys.LEFT
-        if key in self.right_keys:
-            self.key_mask          &= ~Keys.RIGHT
-
-    def MouseButtonDown(self,pos,button):
-        if button == 1:
-            self.parent.ship.Fire(pos)
-        if button == 3:
-            self.parent.ship.Grapple(pos)
-        return False,False
-
-    def TutorialMovement(self,t):
-        if self.all_time_key_mask == Keys.ALL:
-            self.parent.ship.SetText('Aim with the mouse and left click to shoot',wait=0)
-            self.parent.ship.state = ShipStates.TUTORIAL_SHOOTING
-            self.parent.ship.fired = False
-
-    def TutorialShooting(self,t):
-        if self.parent.ship.fired:
-            self.parent.ship.SetText('Grapple by right-clicking on a target behind your ship',wait=0)
-            self.parent.ship.state = ShipStates.TUTORIAL_GRAPPLE
-            self.parent.ship.grappled = False
-
-    def TutorialGrapple(self,t):
-        if self.parent.ship.grappled:
-            self.parent.ship.SetText('Detach the grapple by right clicking again',wait=0)
-            self.parent.ship.state = ShipStates.TUTORIAL_TOWING
-            self.parent.ship.detached = False
-
-    def TutorialTowing(self,t):
-        if self.parent.ship.detached:
-            self.EndTutorial()
-
-    def EndTutorial(self):
-        self.parent.ship.SetText('Great! Now to get evolution started, lift some crates of primordial goo into the air and destroy them!',wait=0,limit=6000)
-        self.skip_text.Disable()
-        self.parent.ship.state = ShipStates.DESTROY_CRATES
-
-    def LevelDestroyCrates(self,t):
-        pass
-
-    def BoxDestroyed(self,box):
-        p = box.GetPos()
-        target = 750
-        if not p:
-            #Not sure when this would happen
-            return
-        if p.y < target:
-            self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
-            return
-        self.num_boxes -= 1
-        if self.num_boxes > 0:
-            self.parent.ship.SetText('Good! %d boxes left!' % self.num_boxes,wait=0,limit=4000)
-        else:
-            pass
-                                     
-            
-
-    def Update(self,t):
-        self.parent.ship.Update(t)
-        try:
-            self.tutorial_handlers[self.parent.ship.state](t)
-        except KeyError:
-            pass
-        if self.thrust:
-            angle = self.parent.ship.body.angle + self.pi2
-            vector = cmath.rect(self.thrust,angle)
-            self.parent.ship.body.ApplyForce((vector.real,vector.imag),self.parent.ship.body.position)
-        rotate = 0
-        if self.key_mask&Keys.LEFT:
-            rotate += 0.05
-        if self.key_mask&Keys.RIGHT:
-            rotate -= 0.05
-            #self.parent.ship.body.ApplyTorque(self.rotate)
-        if rotate:
-            self.parent.ship.body.angle = self.parent.ship.body.angle + rotate
-            self.parent.ship.body.angularVelocity = 0
 
 class GameView(ui.RootElement):
     def __init__(self):
         super(GameView,self).__init__(Point(0,0),Point(globals.screen.x*10,globals.screen.y*8))
-        self.atlas = drawing.texture.TextureAtlas('tiles_atlas_0.png','tiles_atlas.txt')
+        self.atlas = globals.atlas = drawing.texture.TextureAtlas('tiles_atlas_0.png','tiles_atlas.txt')
         self.uielements = {}
         #backdrop_tc = [[0,0],[0,1],[5,1],[5,0]]
         #self.atlas.TransformCoords('starfield.png',backdrop_tc) 
@@ -524,7 +282,7 @@ class GameView(ui.RootElement):
         #raise SystemExit
             
         
-        self.mode = Intro(self)
+        self.mode = modes.Intro(self)
 
     def Draw(self):
 

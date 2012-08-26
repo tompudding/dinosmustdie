@@ -272,6 +272,18 @@ class RootElement(UIElement):
             return handled,False
         return False,False
 
+    def Update(self,t):
+        pass
+    
+    def Draw(self):
+        pass
+
+    def KeyUp(self,key):
+        pass
+    
+    def KeyDown(self,key):
+        pass
+
     def CancelMouseMotion(self):
         pass
 

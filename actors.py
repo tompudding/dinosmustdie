@@ -7,6 +7,7 @@ import cmath
 import math
 import os
 import game_view
+import modes
 
 class StaticTriangle(object):
     def __init__(self,physics,vertices):
@@ -151,10 +152,10 @@ class DynamicBox(StaticBox):
 
     def Damage(self,amount):
         print globals.current_view.ship.state
-        if globals.current_view.ship.state in [game_view.ShipStates.TUTORIAL_MOVEMENT,
-                                               game_view.ShipStates.TUTORIAL_SHOOTING,
-                                               game_view.ShipStates.TUTORIAL_GRAPPLE,
-                                               game_view.ShipStates.TUTORIAL_TOWING]:
+        if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
+                                               modes.ShipStates.TUTORIAL_SHOOTING,
+                                               modes.ShipStates.TUTORIAL_GRAPPLE,
+                                               modes.ShipStates.TUTORIAL_TOWING]:
             return
         self.health -= amount
         if self.health < 0:
