@@ -5,6 +5,7 @@ import ui
 import drawing
 import cmath
 import math
+import os
 
 class StaticTriangle(object):
     def __init__(self,physics,vertices):
@@ -198,7 +199,7 @@ class PlayerShip(DynamicBox):
         for offset in Point(20,5),Point(-20,5):
             bpos = Point(*self.body.GetWorldPoint(tuple(offset*self.physics.scale_factor)))/self.physics.scale_factor
             print bpos
-            bullet = PlayerBullet(self.physics,bpos,bpos+Point(10,10),tc = self.tc)
+            bullet = PlayerBullet(self.physics,bpos,bpos+Point(20,20),tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'blast.png')))
             #print dir(bullet.body)
             bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + (pos - bpos).unit_vector()*200)
             self.bullets.append(bullet)
