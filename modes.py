@@ -308,8 +308,8 @@ class Titles(Mode):
         self.stage = self.handlers[self.stage](t)
         if self.stage == TitleStages.COMPLETE:
             #Lets add some dinosaurs
-            #for i in xrange(20):
-            #    self.parent.AddTrex()
+            for i in xrange(20):
+                self.parent.AddTrex()
             self.parent.ship.state = ShipStates.DESTROY_DINOS
             self.parent.mode = self.parent.game_mode
 

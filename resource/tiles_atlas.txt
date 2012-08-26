@@ -1,5 +1,6 @@
-resource/sprites/dirt.png:resource/tiles_atlas_0.png:0:480.0:32:32
-resource/sprites/grapple.png:resource/tiles_atlas_0.png:32:480.0:32:32
-resource/sprites/blast.png:resource/tiles_atlas_0.png:64:480.0:32:32
-resource/sprites/crate.png:resource/tiles_atlas_0.png:96:480.0:32:32
-resource/sprites/ship.png:resource/tiles_atlas_0.png:128:488.0:28:24
+resource/sprites/trex.png:resource/tiles_atlas_0.png:0:459.0:49:53
+resource/sprites/blast.png:resource/tiles_atlas_0.png:49:480.0:32:32
+resource/sprites/grapple.png:resource/tiles_atlas_0.png:81:480.0:32:32
+resource/sprites/crate.png:resource/tiles_atlas_0.png:113:480.0:32:32
+resource/sprites/dirt.png:resource/tiles_atlas_0.png:145:480.0:32:32
+resource/sprites/ship.png:resource/tiles_atlas_0.png:177:488.0:28:24

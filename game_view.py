@@ -213,6 +213,7 @@ class GameView(ui.RootElement):
         self.viewpos = Viewpos(Point(globals.screen.x*5,globals.screen.y))
         self.t = None
         self.physics = Physics(self)
+        self.enemies = []
         dirt_x = self.absolute.size.x/(self.ground_texture.width*2.0)
         dirt_y = (globals.screen.y+50)/(self.ground_texture.height*2.0)
         dirt_tc = [[0,0],[0,dirt_y],[dirt_x,dirt_y],[dirt_x,0]]
@@ -283,6 +284,8 @@ class GameView(ui.RootElement):
             
         
         self.mode = modes.Intro(self)
+        #self.game_mode = modes.GameMode(self)
+        #self.mode = modes.Titles(self)
 
     def Draw(self):
 
@@ -363,3 +366,31 @@ class GameView(ui.RootElement):
             self.mode.Update(t)
 
         self.Draw()
+
+    def GetFloorHeight(self,x):
+        for i,(pos,height) in enumerate(self.land_heights):
+            if pos > x:
+                break
+        else:
+            #Er, they asked for off the right of the screen?
+            return 0
+        if i == 0:
+            #They asked for off the left of the screen
+            return 0
+        prev_x,prev_height = self.land_heights[i-1]
+        partial = (pos-x)/float(pos -prev_x)
+        return prev_height + partial*(height-prev_height)
+
+    def AddTrex(self):
+        x = 0.1 + (random.random()*self.absolute.size.x*0.9)
+        bl = Point(x,self.GetFloorHeight(x))
+        self.enemies.append( actors.Trex(self,
+                                         self.physics,
+                                         bl = bl,
+                                         tr = bl + Point(50,50)) )
+
+    def RemoveTrex(self,trex):
+        for i in xrange(len(self.enemies)):
+            if trex is self.enemies[i]:
+                del self.enemies[i]
+                break

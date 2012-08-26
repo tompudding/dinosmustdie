@@ -176,6 +176,28 @@ class PlayerBullet(DynamicBox):
     mass     = 0.8
     filter_group = -1
 
+class Trex(DynamicBox):
+    mass   = 20
+    health = 100
+    def __init__(self,parent,physics,bl,tr):
+        self.parent = parent
+        tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'trex.png'))
+        super(Trex,self).__init__(physics,bl,tr,tc)
+
+    def Damage(self,amount):
+        print globals.current_view.ship.state
+        if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
+                                               modes.ShipStates.TUTORIAL_SHOOTING,
+                                               modes.ShipStates.TUTORIAL_GRAPPLE,
+                                               modes.ShipStates.TUTORIAL_TOWING]:
+            return
+        self.health -= amount
+        if self.health < 0:
+            #globals.current_view.mode.BoxDestroyed(self)
+            self.parent.RemoveTrex(self)
+            self.Destroy()
+
+
 class PlayerShip(DynamicBox):
     max_shoot = 0.5*math.pi
     min_shoot = 1.5*math.pi
