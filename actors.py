@@ -468,6 +468,8 @@ class PlayerShip(ShootingThing):
                     targets.extend(item.bullets)
                 for enemy in targets:
                     enemy_pos = enemy.GetPos()
+                    if not enemy_pos:
+                        continue
                     signs = []
                     for a,b in ((left_part,left_distant),(right_part,right_distant)):
                         sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
