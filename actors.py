@@ -152,10 +152,7 @@ class DynamicBox(StaticBox):
             self.quad.vertex[(i+3)%4] = (screen_coords.x,screen_coords.y,10)
 
     def Damage(self,amount):
-        if globals.game_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
-                                               modes.ShipStates.TUTORIAL_SHOOTING,
-                                               modes.ShipStates.TUTORIAL_GRAPPLE,
-                                               modes.ShipStates.TUTORIAL_TOWING]:
+        if globals.game_view.ship.state in modes.ShipStates.TUTORIAL:
             return
         self.health -= amount
         if self.health < 0:
@@ -163,10 +160,7 @@ class DynamicBox(StaticBox):
 
 class Crate(DynamicBox):
     def Damage(self,amount):
-        if globals.game_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
-                                               modes.ShipStates.TUTORIAL_SHOOTING,
-                                               modes.ShipStates.TUTORIAL_GRAPPLE,
-                                               modes.ShipStates.TUTORIAL_TOWING]:
+        if globals.game_view.ship.state in modes.ShipStates.TUTORIAL:
             return
         self.health -= amount
         if self.health < 0:
@@ -611,6 +605,8 @@ class PlayerShip(ShootingThing):
         self.number_enemies_text.SetText('Dinosaurs : %s' % self.num_enemies)
 
     def AddScore(self,value):
+        if globals.game_view.ship.state in modes.ShipStates.TUTORIAL:
+            return
         self.SetScore(self.score + value)
 
     def AdjustBeamPower(self,amount):
