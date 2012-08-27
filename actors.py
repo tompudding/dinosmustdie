@@ -462,24 +462,28 @@ class PlayerShip(ShootingThing):
                 self.beam_quad.vertex[i] = (vertex.x,vertex.y,20)
 
             #Are we damaging anybody
-            for enemy in self.parent.enemies + self.parent.game_mode.ooze_boxes:
-                enemy_pos = enemy.GetPos()
-                signs = []
-                for a,b in ((left_part,left_distant),(right_part,right_distant)):
-                    sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
-                    signs.append(sign)
-                if signs[0]*signs[-1] < 0:
-                    #i.e the two signs were different, i.e the thing was on the different side of each line
-                    #i.e it's between the lines
-                    #Is it in front though?
-                    a = left_part
-                    b = right_part
-                    sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
-                    if sign > 0:
-                        distance = (enemy_pos - left_part).length()
-                        if distance < 600:
-                            self.AddScore(10)
-                            enemy.Damage(5)
+            for item in self.parent.enemies + self.parent.game_mode.ooze_boxes:
+                targets = [item]
+                if hasattr(item,'bullets'):
+                    targets.extend(item.bullets)
+                for enemy in targets:
+                    enemy_pos = enemy.GetPos()
+                    signs = []
+                    for a,b in ((left_part,left_distant),(right_part,right_distant)):
+                        sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
+                        signs.append(sign)
+                    if signs[0]*signs[-1] < 0:
+                        #i.e the two signs were different, i.e the thing was on the different side of each line
+                        #i.e it's between the lines
+                        #Is it in front though?
+                        a = left_part
+                        b = right_part
+                        sign = (b.x - a.x)*(enemy_pos.y-a.y) - (b.y - a.y)*(enemy_pos.x-a.x)
+                        if sign > 0:
+                            distance = (enemy_pos - left_part).length()
+                            if distance < 600:
+                                self.AddScore(10)
+                                enemy.Damage(5)
                     
 
         else:

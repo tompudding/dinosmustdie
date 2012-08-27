@@ -398,8 +398,7 @@ class GameView(ui.RootElement):
         x = 0.1 + (random.random()*self.absolute.size.x*0.9)
         #x = self.absolute.size.x*0.5
         bl = Point(x,self.GetFloorHeight(x)+400)
-        #type,size = random.choice([(actors.Trex,Point(50,50)),(actors.Stegosaurus,Point(80,40))])
-        type,size = actors.Stegosaurus,Point(80,40)
+        type,size = random.choice([(actors.Trex,Point(50,50)),(actors.Stegosaurus,Point(80,40))])
         self.enemies.append( type(self,
                                    self.physics,
                                    bl = bl,
