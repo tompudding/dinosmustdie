@@ -152,7 +152,7 @@ class DynamicBox(StaticBox):
             self.quad.vertex[(i+3)%4] = (screen_coords.x,screen_coords.y,10)
 
     def Damage(self,amount):
-        if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
+        if globals.game_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
                                                modes.ShipStates.TUTORIAL_SHOOTING,
                                                modes.ShipStates.TUTORIAL_GRAPPLE,
                                                modes.ShipStates.TUTORIAL_TOWING]:
@@ -163,7 +163,7 @@ class DynamicBox(StaticBox):
 
 class Crate(DynamicBox):
     def Damage(self,amount):
-        if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
+        if globals.game_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
                                                modes.ShipStates.TUTORIAL_SHOOTING,
                                                modes.ShipStates.TUTORIAL_GRAPPLE,
                                                modes.ShipStates.TUTORIAL_TOWING]:
@@ -176,15 +176,74 @@ class Crate(DynamicBox):
                 globals.current_view.mode.BoxDestroyed(self)
             self.Destroy()
 
+class Bullet(DynamicBox):
+    pass
 
-class PlayerBullet(DynamicBox):
+class PlayerBullet(Bullet):
     isBullet = True
-    def __init__(self,physics,bl,tr,tc,filter_group,mass):
+    damage = 10
+    bullet_shape = Point(20,20)
+    def __init__(self,parent,physics,bl,tr,tc,filter_group,mass):
+        self.parent = parent
         self.filter_group = filter_group
         self.mass = mass
         super(PlayerBullet,self).__init__(physics,bl,tr,tc)
 
+class SeekingMissile(Bullet):
+    isBullet = True
+    damage = 20
+    bullet_shape = Point(20,20)
+    def __init__(self,parent,physics,bl,tr,tc,filter_group,mass):
+        self.parent = parent
+        self.target = globals.game_view.ship
+        self.filter_group = filter_group
+        self.mass = mass
+        super(SeekingMissile,self).__init__(physics,bl,tr,globals.game_view.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'beam.png')))
+
+    def Destroy(self):
+        if self.parent:
+            self.parent.DeleteBullet(self)
+        super(SeekingMissile,self).Destroy()
+
+    def PhysUpdate(self):
+        super(SeekingMissile,self).PhysUpdate()
+        #Apply a thrust in the direction of the target
+        target_pos = self.target.GetPos()
+        self.pos = self.GetPos()
+        if not target_pos or not self.pos:
+            return
+        diff = target_pos - self.pos
+        direction = self.GetAngle() + (math.pi/2)
+        distance,angle = cmath.polar(complex(diff.x,diff.y))
+        #angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
+        angle = (angle - self.GetAngle() - (math.pi/2))%(math.pi*2)
+        
+        if angle < (math.pi/2):
+            #need to turn right, but by how much?
+            amount = angle/math.pi
+        else:
+            amount = -(2*math.pi - angle)/math.pi
+
+        desired_av = 100*amount
+        desired_velocity = 40*(1-abs(amount))
+        torque = (desired_av - self.body.angularVelocity)
+        current_speed = Point(*self.body.linearVelocity)
+        vector = cmath.rect(1,direction)
+        vector_point = Point(vector.real,vector.imag)
+        dot = vector_point*current_speed
+        dot = (dot.x + dot.y)
+        
+        thrust = desired_velocity - dot
+            
+        angle = self.body.angle + math.pi/2
+        vector = vector*thrust
+        self.body.ApplyForce((vector.real,vector.imag),self.body.position)
+        self.body.ApplyTorque(torque)
+
+
 class ShootingThing(DynamicBox):
+    wait_for_bullets = False
+    straight_up = False
     def Fire(self,pos):
         diff = pos - self.GetPos()
         distance,angle = cmath.polar(complex(diff.x,diff.y))
@@ -206,10 +265,15 @@ class ShootingThing(DynamicBox):
         #if distance >= self.max_distance:
         #    return
         for offset in self.cannon_positions:
+            if self.wait_for_bullets and len(self.bullets) >= self.max_bullets:
+                continue
             bpos = Point(*self.body.GetWorldPoint(tuple(offset*self.physics.scale_factor)))/self.physics.scale_factor
-            bullet = PlayerBullet(self.physics,bpos,bpos+Point(20,20),tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'blast.png')),filter_group = self.filter_group,mass = self.bullet_mass)
+            bullet = self.bullet_type(self,self.physics,bpos,bpos+self.bullet_type.bullet_shape,tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'blast.png')),filter_group = self.filter_group,mass = self.bullet_mass)
             #print dir(bullet.body)
-            bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + (pos - bpos).unit_vector()*self.bullet_velocity)
+            if self.straight_up:
+                pass
+            else:
+                bullet.body.linearVelocity = tuple(Point(*self.body.linearVelocity) + (pos - bpos).unit_vector()*self.bullet_velocity)
             self.bullets.append(bullet)
             if len(self.bullets) > self.max_bullets:
                 bullet = self.bullets.pop(0)
@@ -228,10 +292,12 @@ class Trex(ShootingThing):
     max_bullets = 2
     bullet_mass = 0.04
     bullet_velocity = 80
+    bullet_type = PlayerBullet
     cannon_positions = [Point(20,5)]
+    sprite = 'trex.png'
     def __init__(self,parent,physics,bl,tr):
         self.parent = parent
-        tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,'trex.png'))
+        tc = self.parent.atlas.TextureCoords(os.path.join(globals.dirs.sprites,self.sprite))
         super(Trex,self).__init__(physics,bl,tr,tc)
         self.cooldown = 0
         self.bullets = []
@@ -242,11 +308,11 @@ class Trex(ShootingThing):
     def Damage(self,amount):
         if self.dead:
             return
-        self.parent.ship.AddScore(7)
-        if globals.current_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
-                                               modes.ShipStates.TUTORIAL_SHOOTING,
-                                               modes.ShipStates.TUTORIAL_GRAPPLE,
-                                               modes.ShipStates.TUTORIAL_TOWING]:
+        self.parent.ship.AddScore(amount)
+        if globals.game_view.ship.state in [modes.ShipStates.TUTORIAL_MOVEMENT,
+                                            modes.ShipStates.TUTORIAL_SHOOTING,
+                                            modes.ShipStates.TUTORIAL_GRAPPLE,
+                                            modes.ShipStates.TUTORIAL_TOWING]:
             return
         self.health -= amount
         if self.health < 0:
@@ -263,8 +329,24 @@ class Trex(ShootingThing):
         player_pos = self.parent.ship.GetPos()
         if not player_pos:
             return
-        self.Fire(player_pos)
-        
+        self.Fire(player_pos)  
+
+class Stegosaurus(Trex):
+    bullet_type = SeekingMissile
+    bullet_velocity = 10
+    cooldown_time = 5000
+    max_bullets = 1
+    wait_for_bullets = True
+    sprite = 'steg.png'
+
+    def DeleteBullet(self,bullet):
+        index = None
+        for i,item in enumerate(self.bullets):
+            if item is bullet:
+                index = i
+                break
+        if index != None:
+            del self.bullets[index]
         
 
 class PlayerShip(ShootingThing):
@@ -281,6 +363,7 @@ class PlayerShip(ShootingThing):
     max_bullets = 10
     bullet_mass = 0.08
     bullet_velocity = 200
+    bullet_type = PlayerBullet
     cannon_positions = [Point(20,5),Point(-20,5)]
     def __init__(self,parent,physics,bl,tr,tc):
         self.parent = parent
@@ -334,7 +417,7 @@ class PlayerShip(ShootingThing):
                                       text   = ' ',
                                       scale  = 2)
         self.AdjustBeamPower(1000)
-        self.SetHealth(350)
+        self.SetHealth(500)
         globals.sounds.hurt.set_volume(0.2)
         self.SetScore(0)
 
@@ -535,7 +618,7 @@ class PlayerShip(ShootingThing):
     def Damage(self,amount):
         if self.dead:
             return
-        if globals.current_view.ship.state != modes.ShipStates.DESTROY_DINOS:
+        if globals.game_view.ship.state != modes.ShipStates.DESTROY_DINOS:
             return
         self.SetHealth(self.health - amount)
         globals.sounds.hurt.play()

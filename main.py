@@ -51,7 +51,7 @@ def main():
     """Main loop for the game"""
     Init()
 
-    globals.current_view = game_view.GameView()
+    globals.current_view = globals.game_view = game_view.GameView()
 
     done = False
     last = 0

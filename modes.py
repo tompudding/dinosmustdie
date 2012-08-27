@@ -124,7 +124,7 @@ class ShipStates(object):
     DINO_TEXT            = 7
     DESTROY_DINOS_IMMUNE = 8
     DESTROY_DINOS        = 9
-    TUTORIAL = set([TUTORIAL_MOVEMENT,TUTORIAL_SHOOTING,TUTORIAL_GRAPPLE,TUTORIAL_TOWING])
+    TUTORIAL = set([TUTORIAL_MOVEMENT,TUTORIAL_SHOOTING,TUTORIAL_GRAPPLE,TUTORIAL_TOWING,TUTORIAL_BEAM])
 
 class GameMode(Mode):
     def __init__(self,parent):
@@ -266,7 +266,7 @@ class GameMode(Mode):
         if self.parent.ship.state != ShipStates.DESTROY_CRATES:
             #We don't care
             return
-        #temporary cheat:
+        #temporary cheat:wwwwwww
         #if 0:
         p = box.GetPos()
         target = 750

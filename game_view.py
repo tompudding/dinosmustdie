@@ -181,10 +181,10 @@ class Physics(object):
         self.world.Step(self.timeStep, self.velocityIterations, self.positionIterations)
         for contact in self.contacts:
             #print contact
-            if isinstance(contact.shape1.userData,actors.PlayerBullet):
+            if isinstance(contact.shape1.userData,actors.Bullet):
                 bullet = contact.shape1
                 target = contact.shape2
-            elif isinstance(contact.shape2.userData,actors.PlayerBullet):
+            elif isinstance(contact.shape2.userData,actors.Bullet):
                 bullet = contact.shape2
                 target = contact.shape1
             else:
@@ -193,7 +193,7 @@ class Physics(object):
             if bullet:
                 bullet.userData.Destroy()
                 if target.userData != None:
-                    target.userData.Damage(10)
+                    target.userData.Damage(bullet.userData.damage)
                 #print 'Bullet Collision!'
         for obj in self.objects:
             obj.PhysUpdate()
@@ -396,11 +396,13 @@ class GameView(ui.RootElement):
 
     def AddTrex(self):
         x = 0.1 + (random.random()*self.absolute.size.x*0.9)
-        bl = Point(x,self.GetFloorHeight(x)+100)
-        self.enemies.append( actors.Trex(self,
-                                         self.physics,
-                                         bl = bl,
-                                         tr = bl + Point(50,50)) )
+        #x = self.absolute.size.x*0.5
+        bl = Point(x,self.GetFloorHeight(x)+400)
+        type,size = random.choice([(actors.Trex,Point(50,50)),(actors.Stegosaurus,Point(80,40))])
+        self.enemies.append( type(self,
+                                   self.physics,
+                                   bl = bl,
+                                   tr = bl + size) )
         self.ship.SetEnemies(len(self.enemies))
 
     def RemoveTrex(self,trex):
