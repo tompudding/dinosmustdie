@@ -216,28 +216,30 @@ class SeekingMissile(Bullet):
         direction = self.GetAngle() + (math.pi/2)
         distance,angle = cmath.polar(complex(diff.x,diff.y))
         #angle = (angle - (math.pi/2) - self.GetAngle())%(math.pi*2)
-        angle = (angle - self.GetAngle() - (math.pi/2))%(math.pi*2)
+        angle = (angle - direction)%(math.pi*2)
         
-        if angle < (math.pi/2):
+        if angle < (math.pi):
             #need to turn right, but by how much?
             amount = angle/math.pi
         else:
             amount = -(2*math.pi - angle)/math.pi
 
-        desired_av = 100*amount
-        desired_velocity = 40*(1-abs(amount))
-        torque = (desired_av - self.body.angularVelocity)
+        desired_av = 10*amount
+        f = 1 - abs(amount)
         current_speed = Point(*self.body.linearVelocity)
-        vector = cmath.rect(1,direction)
-        vector_point = Point(vector.real,vector.imag)
-        dot = vector_point*current_speed
-        dot = (dot.x + dot.y)
+        if f < 0.8 or current_speed.length() > 80:
+            desired_velocity = 0
+            #Apply a force in the direction we're not going to slow us down
+            force = Point(-current_speed.x,-current_speed.y)
+            self.body.ApplyForce(tuple(force),self.body.position)
+        else:
+            desired_velocity = 1
+            thrust = 20
+            vector = cmath.rect(thrust,direction)
+            self.body.ApplyForce((vector.real,vector.imag),self.body.position)
+
         
-        thrust = desired_velocity - dot
-            
-        angle = self.body.angle + math.pi/2
-        vector = vector*thrust
-        self.body.ApplyForce((vector.real,vector.imag),self.body.position)
+        torque = (desired_av - self.body.angularVelocity)
         self.body.ApplyTorque(torque)
 
 

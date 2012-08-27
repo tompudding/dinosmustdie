@@ -267,18 +267,18 @@ class GameMode(Mode):
             #We don't care
             return
         #temporary cheat:wwwwwww
-        #if 0:
-        p = box.GetPos()
-        target = 750
-        if not p:
-            #Not sure when this would happen
-            return
-        if p.y < target:
-            self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
-            return
-        self.num_boxes -= 1
-        if self.num_boxes > 0:
-            self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
+        if 0:
+            p = box.GetPos()
+            target = 750
+            if not p:
+                #Not sure when this would happen
+                return
+            if p.y < target:
+                self.parent.ship.SetText('That was too low by %2.f metres, try again but higher!' % (target - p.y),wait=0,limit=6000)
+                return
+            self.num_boxes -= 1
+            if self.num_boxes > 0:
+                self.parent.ship.SetText('Good! %d box%s left!' % (self.num_boxes,'' if self.num_boxes == 1 else 'es'),wait=0,limit=4000)
         else:
             self.parent.ship.SetText('Great. Press <space> to wait 3 billion years for life to evolve',wait=0)
             time_taken = self.t - self.start_task_time
