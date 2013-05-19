@@ -5,7 +5,6 @@ import ui,globals,drawing,os,copy
 from globals.types import Point
 import Box2D as box2d
 import actors
-import game_view
 import sys
 
 class IntroStages(object):
