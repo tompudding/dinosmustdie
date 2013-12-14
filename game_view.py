@@ -106,7 +106,6 @@ class fwContactPoint:
     id  = None
     state = 0
 
-
 class MyContactListener(box2d.b2ContactListener):
     physics = None
     def __init__(self): 
