@@ -3,29 +3,38 @@ from pygame.locals import *
 from OpenGL.GL.framebufferobjects import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import globals,constants,opengl
+import globals
+import constants
+import opengl
 from globals.types import Point
 
 cache = {}
 global_scale = 1
 
 class Texture(object):
-    def __init__(self,filename):
+    def __init__(self,filename,width=None,height=None):
         filename = filename
         if filename not in cache:
-            with open(filename,'rb') as f:
+            with open(globals.pyinst.path(filename),'rb') as f:
                 self.textureSurface = pygame.image.load(f)
             self.textureData = pygame.image.tostring(self.textureSurface, 'RGBA', 1)
 
-            self.width  = self.textureSurface.get_width()
-            self.height = self.textureSurface.get_height()
+            if width is not None:
+                self.width = width
+            else:
+                self.width  = self.textureSurface.get_width()
+
+            if height is not None:
+                self.height = height
+            else:
+                self.height = self.textureSurface.get_height()
 
             self.texture = glGenTextures(1)
             cache[filename] = (self.texture,self.width,self.height)
             glBindTexture(GL_TEXTURE_2D, self.texture)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.width, self.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.textureData)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.textureSurface.get_width(), self.textureSurface.get_height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, self.textureData)
         else:
             self.texture,self.width,self.height = cache[filename]
             glBindTexture(GL_TEXTURE_2D, self.texture)
@@ -46,12 +55,12 @@ class RenderTarget(object):
         glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, self.depthbuffer)
         glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, self.x, self.y)
         glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER_EXT, self.depthbuffer)
-        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.texture, 0); 
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.texture, 0);
         if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
             print 'crapso'
             raise SystemExit
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
-        
+
     def Target(self):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
@@ -73,7 +82,7 @@ class RenderTarget(object):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
 
-#texture atlas code taken from 
+#texture atlas code taken from
 #http://omnisaurusgames.com/2011/06/texture-atlas-generation-using-python/
 #I'm assuming it's open source!
 
@@ -93,7 +102,7 @@ class TextureAtlas(object):
         self.texture = Texture(image_filename)
         self.subimages = {}
         #data_filename = os.path.join(globals.dirs.resource,data_filename)
-        with open(data_filename,'rb') as f:
+        with open(globals.pyinst.path(data_filename),'rb') as f:
             for line in f:
                 subimage_name,\
                 image_name   ,\
@@ -118,7 +127,7 @@ class TextureAtlas(object):
     def TransformCoord(self,subimage,value):
         value[0] = subimage.pos.x + value[0]*(float(subimage.size.x)/self.texture.width)
         value[1] = subimage.pos.y + value[1]*(float(subimage.size.y)/self.texture.height)
-    
+
     def TransformCoords(self,subimage,tc):
         subimage = '_'.join(subimage.split(os.path.sep))
         subimage = self.subimages[subimage]
@@ -151,7 +160,7 @@ class PetsciiAtlas(TextureAtlas):
             w = 8
             h = 8
             self.subimages[subimage_name] = SubImage(Point(float(x)/self.texture.width,float(y)/self.texture.height),(Point(w,h)))
-            
+
 
 class TextTypes:
     SCREEN_RELATIVE = 1
@@ -161,7 +170,7 @@ class TextTypes:
     LEVELS          = {SCREEN_RELATIVE : constants.DrawLevels.text,
                        CUSTOM          : constants.DrawLevels.text,
                        WORLD_RELATIVE  : constants.DrawLevels.grid + 0.1,
-                       MOUSE_RELATIVE  : constants.DrawLevels.text}         
+                       MOUSE_RELATIVE  : constants.DrawLevels.text}
 
 class TextAlignments:
     LEFT            = 1
@@ -182,7 +191,7 @@ class TextManager(object):
 
 
     def Letter(self,char,textType,userBuffer = None):
-        quad = opengl.Quad(userBuffer if textType == TextTypes.CUSTOM else TextTypes.BUFFER[textType])    
+        quad = opengl.Quad(userBuffer if textType == TextTypes.CUSTOM else TextTypes.BUFFER[textType])
         quad.tc[0:4]  = self.atlas.TextureCoords(char)
         #this is a bit dodge, should get its own class if I want to store extra things in it
         quad.width,quad.height = self.atlas.Subimage(char).size
@@ -196,7 +205,7 @@ class TextManager(object):
         sizes = [self.atlas.Subimage(char).size*scale*global_scale for char in text]
         out = Point(sum(item.x for item in sizes),max(item.y for item in sizes))
         return out
-    
+
 
     def Draw(self):
         glBindTexture(GL_TEXTURE_2D,self.atlas.texture.texture)

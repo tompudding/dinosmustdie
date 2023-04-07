@@ -47,7 +47,7 @@ class StaticBox(object):
         #Hardcode the dirt texture since right now all static things are dirt. I know I know.
         self.dead = False
         self.tc = tc
-        if tc != None:
+        if tc is not None:
             self.InitPolygons(tc)
             self.visible = True
         else:
@@ -59,7 +59,7 @@ class StaticBox(object):
         self.shape = self.CreateShape(midpoint)
         if not self.static:
             self.shape.userData = self
-        if self.filter_group != None:
+        if self.filter_group is not None:
             self.shape.filter.groupIndex = self.filter_group
         self.bodydef.isBullet = self.isBullet
         self.body = physics.world.CreateBody(self.bodydef)
@@ -341,7 +341,7 @@ class Stegosaurus(Trex):
             if item is bullet:
                 index = i
                 break
-        if index != None:
+        if index is not None:
             del self.bullets[index]
         
 
@@ -423,13 +423,13 @@ class PlayerShip(ShootingThing):
         if not selfpos:
             return
         self.text.SetPos(self.parent.GetRelative(selfpos))
-        if self.text_start == None and t != None:
+        if self.text_start == None and t is not None:
             self.text_start = t+self.text_wait
-        if t != None:
+        if t is not None:
             elapsed = t - self.text_start
             if elapsed > len(self.text.text)*self.letter_duration:
                 self.text.EnableChars()
-                if self.text_limit != None and elapsed > self.text_limit:
+                if self.text_limit is not None and elapsed > self.text_limit:
                     self.SetText(' ',wait=0)
             elif elapsed > 0:
                 num_enabled = int(float(elapsed)/self.letter_duration)
@@ -587,7 +587,7 @@ class PlayerShip(ShootingThing):
         self.text.EnableChars(0)
         self.text_start = None
         self.text_wait = wait
-        if limit != None:
+        if limit is not None:
             self.text_limit = limit
 
     def SetHealth(self,value):

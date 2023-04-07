@@ -75,9 +75,9 @@ class Quad(object):
         self.vertex = PolyVertex(self.index,source.vertex_data)
         self.tc     = PolyVertex(self.index,source.tc_data)
         self.colour = PolyVertex(self.index,source.colour_data)
-        if vertex != None:
+        if vertex is not None:
             self.vertex[0:self.num_vertices] = vertex
-        if tc != None:
+        if tc is not None:
             self.tc[0:self.num_vertices] = tc
         self.old_vertices = None
         self.deleted = False
@@ -100,7 +100,7 @@ class Quad(object):
     def Enable(self):
         if self.deleted:
             return
-        if self.old_vertices != None:
+        if self.old_vertices is not None:
             for i in xrange(self.num_vertices):
                 self.vertex[i] = self.old_vertices[i]
             self.old_vertices = None
@@ -110,7 +110,7 @@ class Quad(object):
             return
         assert(self.num_vertices == 4)
         setvertices(self.vertex,bl,tr,z)
-        if self.old_vertices != None:
+        if self.old_vertices is not None:
             self.old_vertices = numpy.copy(self.vertex[0:self.num_vertices])
             for i in xrange(self.num_vertices):
                 self.vertex[i] = (0,0,0)

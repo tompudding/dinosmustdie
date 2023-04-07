@@ -225,7 +225,7 @@ class RootElement(UIElement):
         if hovered:
             hovered.MouseMotion(pos,rel,handled)
         if hovered is not self.hovered:
-            if self.hovered != None:
+            if self.hovered is not None:
                 self.hovered.EndHover()
         if not hovered or not self.depressed or (self.depressed and hovered is self.depressed):
             self.hovered = hovered
@@ -769,7 +769,7 @@ class ScrollTextBox(TextBox):
         pos = self.GetRelative(pos)
         low_thresh = 0.05
         high_thresh = 1.05
-        if self.dragging != None:
+        if self.dragging is not None:
             #print pos,'vp:',self.viewpos,(self.dragging - pos).y
             self.viewpos = self.ValidViewpos(self.dragging - pos.y)
 
@@ -907,7 +907,7 @@ class TextBoxButton(TextBox):
         super(TextBoxButton,self).Disable()
 
     def OnClick(self,pos,button):
-        if 1 or self.callback != None and button == 1:
+        if 1 or self.callback is not None and button == 1:
             self.callback(pos)
 
 class Slider(UIElement):
